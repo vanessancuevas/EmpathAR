@@ -3,256 +3,484 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-  <title>Social Battery AR</title>
+  <title>EmpathAR</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
   <style>
+    :root {
+      --bg:        #030d12;
+      --surface:   #071820;
+      --accent:    #00d4b8;
+      --accent-lo: rgba(0,212,184,0.10);
+      --accent-bd: rgba(0,212,184,0.28);
+      --text:      #b8ede8;
+      --muted:     rgba(184,237,232,0.38);
+      --danger:    #f87171;
+      --font-d:    'Orbitron', monospace;
+      --font-m:    'Space Mono', monospace;
+    }
+
     *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
     body {
-      background: #000;
+      background: var(--bg);
       overflow: hidden;
       width: 100vw;
       height: 100dvh;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-family: var(--font-m);
+      color: var(--text);
     }
 
     #cam {
-      position: fixed;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      z-index: 0;
+      position: fixed; inset: 0;
+      width: 100%; height: 100%;
+      object-fit: cover; z-index: 0;
     }
 
     #overlay {
-      position: fixed;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-      z-index: 1;
+      position: fixed; inset: 0;
+      width: 100%; height: 100%;
+      z-index: 1; pointer-events: none;
+    }
+
+    /* ── Corner-bracket mixin via outline gradient ── */
+    .bracketed {
+      position: relative;
+    }
+    .bracketed::before {
+      content: '';
+      position: absolute;
+      inset: -1px;
+      background:
+        linear-gradient(var(--accent),var(--accent)) top left    / 14px 2px no-repeat,
+        linear-gradient(var(--accent),var(--accent)) top left    / 2px 14px no-repeat,
+        linear-gradient(var(--accent),var(--accent)) top right   / 14px 2px no-repeat,
+        linear-gradient(var(--accent),var(--accent)) top right   / 2px 14px no-repeat,
+        linear-gradient(var(--accent),var(--accent)) bottom left / 14px 2px no-repeat,
+        linear-gradient(var(--accent),var(--accent)) bottom left / 2px 14px no-repeat,
+        linear-gradient(var(--accent),var(--accent)) bottom right/ 14px 2px no-repeat,
+        linear-gradient(var(--accent),var(--accent)) bottom right/ 2px 14px no-repeat;
       pointer-events: none;
     }
 
     /* ── Landing ── */
     #landing {
-      position: fixed;
-      inset: 0;
-      background: radial-gradient(ellipse at 50% 60%, #1a0a2e 0%, #000 100%);
+      position: fixed; inset: 0; z-index: 20;
+      background: var(--bg);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* Subtle grid texture */
+    #landing::after {
+      content: '';
+      position: absolute; inset: 0;
+      background-image:
+        linear-gradient(rgba(0,212,184,0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,212,184,0.04) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+    }
+
+    /* Top system bar */
+    .sys-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 20px;
+      border-bottom: 1px solid var(--accent-bd);
+      flex-shrink: 0;
+      position: relative; z-index: 1;
+    }
+
+    .sys-bar-label {
+      font-family: var(--font-m);
+      font-size: 0.6rem;
+      letter-spacing: 0.18em;
+      color: var(--accent);
+      text-transform: uppercase;
+    }
+
+    .sys-dots {
+      display: flex; gap: 6px; align-items: center;
+    }
+
+    .sys-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--accent-bd);
+    }
+    .sys-dot.on {
+      background: var(--accent);
+      box-shadow: 0 0 6px var(--accent);
+    }
+
+    /* Main content */
+    .landing-body {
+      flex: 1;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      gap: 18px;
-      z-index: 20;
-      padding: 40px 32px;
+      gap: 0;
+      padding: 24px 24px 0;
+      position: relative; z-index: 1;
+    }
+
+    /* Title panel */
+    .title-panel {
+      width: 100%;
+      max-width: 360px;
+      background: var(--accent-lo);
+      border: 1px solid var(--accent-bd);
+      padding: 24px 24px 20px;
+      text-align: center;
+      margin-bottom: 12px;
+    }
+
+    .title-eyebrow {
+      font-family: var(--font-m);
+      font-size: 0.6rem;
+      letter-spacing: 0.22em;
+      color: var(--accent);
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+
+    .title-eyebrow span { opacity: 0.5; margin: 0 6px; }
+
+    #landing h1 {
+      font-family: var(--font-d);
+      font-size: clamp(1.8rem, 10vw, 2.6rem);
+      font-weight: 900;
+      color: var(--accent);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      line-height: 1;
+      text-align: center;
+      text-shadow: 0 0 32px rgba(0,212,184,0.35);
+      margin-bottom: 6px;
+    }
+
+    .ar-accent {
+      color: #c8faf5;
+      text-shadow: 0 0 24px rgba(200,250,245,0.40);
+    }
+
+    .title-sub {
+      font-family: var(--font-m);
+      font-size: 0.62rem;
+      letter-spacing: 0.20em;
+      color: var(--muted);
+      text-transform: uppercase;
+      margin-bottom: 14px;
+    }
+
+    .title-desc {
+      font-family: var(--font-m);
+      font-size: 0.72rem;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    /* Feature panels row */
+    .feat-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      width: 100%;
+      max-width: 360px;
+      margin-bottom: 16px;
+    }
+
+    .feat-panel {
+      background: var(--accent-lo);
+      border: 1px solid var(--accent-bd);
+      padding: 10px 8px;
       text-align: center;
     }
 
-    .logo {
-      width: 72px;
-      height: 72px;
-      border-radius: 24px;
-      background: linear-gradient(135deg, #7c3aed, #2563eb);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 2rem;
+    .feat-id {
+      font-size: 0.5rem;
+      letter-spacing: 0.14em;
+      color: var(--muted);
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+
+    .feat-icon-char {
+      font-family: var(--font-d);
+      font-size: 1.1rem;
+      color: var(--accent);
+      display: block;
       margin-bottom: 4px;
-      box-shadow: 0 8px 32px rgba(124,58,237,0.5);
     }
 
-    #landing h1 {
-      font-size: clamp(1.6rem, 6vw, 2.2rem);
-      font-weight: 700;
-      color: #fff;
-      letter-spacing: -0.02em;
-      line-height: 1.2;
+    .feat-label {
+      font-size: 0.52rem;
+      letter-spacing: 0.12em;
+      color: var(--text);
+      text-transform: uppercase;
     }
 
-    #landing h1 span {
-      background: linear-gradient(135deg, #a78bfa, #60a5fa);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-    }
-
-    #landing p {
-      color: #94a3b8;
-      font-size: 0.93rem;
-      line-height: 1.65;
-      max-width: 320px;
-    }
-
-    .features {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      width: 100%;
-      max-width: 300px;
-    }
-
-    .feature {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      background: rgba(255,255,255,0.05);
-      border: 1px solid rgba(255,255,255,0.08);
-      border-radius: 14px;
-      padding: 10px 14px;
-      text-align: left;
-    }
-
-    .feature-icon { font-size: 1.2rem; flex-shrink: 0; }
-    .feature-text { font-size: 0.82rem; color: #94a3b8; line-height: 1.4; }
-    .feature-text strong { color: #e2e8f0; display: block; font-size: 0.85rem; }
-
+    /* CTA button */
     #start-btn {
-      padding: 15px 44px;
-      background: linear-gradient(135deg, #7c3aed, #2563eb);
-      border: none;
-      border-radius: 50px;
-      color: #fff;
-      font-size: 1rem;
-      font-weight: 600;
+      font-family: var(--font-m);
+      font-size: 0.72rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--bg);
+      background: var(--accent);
+      border: 2px solid var(--accent);
+      padding: 14px 32px;
       cursor: pointer;
-      box-shadow: 0 4px 28px rgba(124,58,237,0.5);
-      letter-spacing: 0.01em;
-      margin-top: 4px;
+      width: 100%;
+      max-width: 360px;
+      margin-bottom: 10px;
+      border-radius: 0;
+      transition: background 0.15s, color 0.15s, box-shadow 0.15s;
+    }
+    #start-btn:hover {
+      background: transparent;
+      color: var(--accent);
+      box-shadow: 0 0 18px rgba(0,212,184,0.35), inset 0 0 18px rgba(0,212,184,0.08);
+    }
+    #start-btn:active {
+      background: var(--accent-lo);
+      color: var(--accent);
     }
 
     #error-msg {
-      color: #f87171;
-      font-size: 0.83rem;
-      min-height: 1.2em;
+      font-family: var(--font-m);
+      font-size: 0.65rem;
+      color: var(--danger);
+      letter-spacing: 0.06em;
+      min-height: 1em;
+      text-align: center;
     }
 
-    /* ── HUD ── */
+    /* Bottom info bar */
+    .sys-bar.bottom {
+      border-top: 1px solid var(--accent-bd);
+      border-bottom: none;
+      margin-top: auto;
+      padding: 8px 20px;
+    }
+
+    /* ── HUD (in-session) ── */
     #hud {
-      position: fixed;
-      inset: 0;
-      z-index: 2;
-      pointer-events: none;
-      display: none;
+      position: fixed; inset: 0; z-index: 2;
+      pointer-events: none; display: none;
     }
-
     #hud.active { display: block; }
 
     #loading-bar-wrap {
-      position: absolute;
-      top: 0; left: 0; right: 0;
-      height: 3px;
-      background: rgba(255,255,255,0.08);
+      position: absolute; top: 0; left: 0; right: 0;
+      height: 2px; background: rgba(0,212,184,0.1);
     }
-
     #loading-bar {
-      height: 100%;
-      background: linear-gradient(90deg, #7c3aed, #60a5fa);
-      width: 0%;
-      transition: width 0.3s;
+      height: 100%; background: var(--accent);
+      width: 0%; transition: width 0.3s;
+      box-shadow: 0 0 8px var(--accent);
     }
 
     #status {
       position: absolute;
-      top: 16px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: rgba(0,0,0,0.55);
-      backdrop-filter: blur(12px);
-      border: 1px solid rgba(255,255,255,0.1);
-      border-radius: 20px;
-      padding: 7px 16px;
-      font-size: 0.78rem;
-      color: #94a3b8;
+      top: 14px; left: 50%; transform: translateX(-50%);
+      background: rgba(3,13,18,0.8);
+      backdrop-filter: blur(8px);
+      border: 1px solid var(--accent-bd);
+      padding: 5px 14px;
+      font-family: var(--font-m);
+      font-size: 0.6rem;
+      letter-spacing: 0.12em;
+      color: var(--accent);
+      text-transform: uppercase;
       white-space: nowrap;
     }
 
     #legend {
       position: absolute;
-      bottom: 28px;
-      left: 16px;
-      background: rgba(0,0,0,0.55);
-      backdrop-filter: blur(12px);
-      border: 1px solid rgba(255,255,255,0.1);
-      border-radius: 14px;
-      padding: 10px 14px;
+      bottom: 24px; left: 14px;
+      background: rgba(3,13,18,0.82);
+      backdrop-filter: blur(8px);
+      border: 1px solid var(--accent-bd);
+      padding: 10px 12px;
       pointer-events: all;
     }
 
     .legend-title {
-      font-size: 0.68rem;
-      color: rgba(255,255,255,0.4);
+      font-family: var(--font-m);
+      font-size: 0.52rem;
+      letter-spacing: 0.18em;
+      color: var(--accent);
       text-transform: uppercase;
-      letter-spacing: 0.08em;
-      margin-bottom: 6px;
+      margin-bottom: 7px;
+      padding-bottom: 5px;
+      border-bottom: 1px solid var(--accent-bd);
     }
 
     .legend-row {
-      display: flex;
-      align-items: center;
-      gap: 7px;
+      display: flex; align-items: center; gap: 7px;
       margin-bottom: 4px;
-      font-size: 0.75rem;
-      color: #cbd5e1;
+      font-family: var(--font-m);
+      font-size: 0.58rem;
+      color: var(--muted);
+      letter-spacing: 0.06em;
     }
 
     .legend-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
+      width: 6px; height: 6px;
       flex-shrink: 0;
     }
 
-    #toggle-skeleton {
-      position: absolute;
-      bottom: 28px;
-      right: 16px;
-      background: rgba(0,0,0,0.55);
-      backdrop-filter: blur(12px);
-      border: 1px solid rgba(255,255,255,0.15);
-      color: rgba(255,255,255,0.6);
-      border-radius: 20px;
-      padding: 7px 14px;
-      font-size: 0.75rem;
+    .hud-btn {
+      background: rgba(3,13,18,0.82);
+      backdrop-filter: blur(8px);
+      border: 1px solid var(--accent-bd);
+      color: var(--muted);
+      font-family: var(--font-m);
+      font-size: 0.58rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      padding: 6px 12px;
       cursor: pointer;
       pointer-events: all;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .hud-btn:hover, .hud-btn.on {
+      color: var(--accent);
+      border-color: var(--accent);
     }
 
-    #toggle-skeleton.on { color: #a78bfa; border-color: rgba(167,139,250,0.4); }
+    #toggle-skeleton {
+      position: absolute; bottom: 24px; right: 14px;
+    }
 
-  #debug-panel {
-    position: absolute;
-    top: 56px;
-    right: 16px;
-    background: rgba(0,0,0,0.72);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255,255,255,0.1);
-    border-radius: 10px;
-    padding: 8px 12px;
-    font-size: 10px;
-    font-family: monospace;
-    color: #94a3b8;
-    line-height: 1.7;
-    display: none;
-    min-width: 140px;
-  }
-  #debug-panel.visible { display: block; }
-  #debug-panel span { float: right; margin-left: 12px; font-weight: 600; }
-  #toggle-debug {
-    position: absolute;
-    top: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: rgba(0,0,0,0.55);
-    backdrop-filter: blur(12px);
-    border: 1px solid rgba(255,255,255,0.1);
-    color: rgba(255,255,255,0.5);
-    border-radius: 20px;
-    padding: 5px 12px;
-    font-size: 0.7rem;
-    cursor: pointer;
-    pointer-events: all;
-    white-space: nowrap;
-  }
+    #toggle-debug {
+      position: absolute; top: 14px; right: 14px;
+    }
+
+    #debug-panel {
+      position: absolute; top: 46px; right: 14px;
+      background: rgba(3,13,18,0.92);
+      border: 1px solid var(--accent-bd);
+      padding: 8px 12px;
+      font-family: var(--font-m);
+      font-size: 0.58rem;
+      color: var(--muted);
+      line-height: 2;
+      display: none;
+      min-width: 148px;
+      letter-spacing: 0.06em;
+    }
+    #debug-panel.visible { display: block; }
+    #debug-panel span { float: right; margin-left: 12px; color: var(--accent); }
+
+    /* ── Radar ── */
+    .radar-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 16px;
+    }
+
+    .radar {
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      border: 1px solid var(--accent-bd);
+      background: radial-gradient(circle, rgba(0,212,184,0.06) 0%, rgba(3,13,18,0.95) 100%);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .radar-ring {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      border-radius: 50%;
+      border: 1px solid var(--accent-bd);
+    }
+
+    .radar-cross-h {
+      position: absolute;
+      width: 100%; height: 1px;
+      top: 50%; left: 0;
+      background: var(--accent-bd);
+    }
+
+    .radar-cross-v {
+      position: absolute;
+      width: 1px; height: 100%;
+      top: 0; left: 50%;
+      background: var(--accent-bd);
+    }
+
+    .radar-sweep {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      background: conic-gradient(
+        transparent 0deg,
+        transparent 255deg,
+        rgba(0,212,184,0.03) 275deg,
+        rgba(0,212,184,0.12) 320deg,
+        rgba(0,212,184,0.50) 355deg,
+        rgba(0,212,184,0.50) 360deg
+      );
+      animation: radar-spin 3s linear infinite;
+    }
+
+    /* Sweep line tip */
+    .radar-sweep::after {
+      content: '';
+      position: absolute;
+      top: 50%; left: 50%;
+      width: 50%; height: 1px;
+      background: linear-gradient(to right, rgba(0,212,184,0.3), var(--accent));
+      transform-origin: left center;
+      box-shadow: 0 0 4px var(--accent);
+    }
+
+    @keyframes radar-spin {
+      from { transform: rotate(0deg); }
+      to   { transform: rotate(360deg); }
+    }
+
+    .radar-center {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      width: 4px; height: 4px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 6px var(--accent);
+    }
+
+    .radar-blip {
+      position: absolute;
+      width: 3px; height: 3px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 6px var(--accent);
+      animation: blip-pulse 2.8s ease-in-out infinite;
+    }
+
+    @keyframes blip-pulse {
+      0%, 100% { opacity: 0; }
+      35%, 65%  { opacity: 1; }
+    }
+
+    .radar-label {
+      font-family: var(--font-m);
+      font-size: 0.48rem;
+      letter-spacing: 0.24em;
+      color: var(--muted);
+      text-transform: uppercase;
+    }
   </style>
 </head>
 <body>
@@ -271,8 +499,8 @@
     <div class="legend-row"><div class="legend-dot" style="background:#f97316"></div>Fading (20–39%)</div>
     <div class="legend-row"><div class="legend-dot" style="background:#a78bfa"></div>Needs Space (0–19%)</div>
   </div>
-  <button id="toggle-skeleton">Skeleton off</button>
-  <button id="toggle-debug">Debug signals</button>
+  <button id="toggle-skeleton" class="hud-btn">Skeleton off</button>
+  <button id="toggle-debug" class="hud-btn">Debug</button>
   <div id="debug-panel">
     <div>Face model <span id="dbg-face-model">loading…</span></div>
     <div>Smile <span id="dbg-smile">—</span></div>
@@ -283,34 +511,69 @@
 </div>
 
 <div id="landing">
-  <div class="logo">🔋</div>
-  <h1>Social<br/><span>Battery AR</span></h1>
-  <p>Point your camera at someone. We read body language signals in real time and display their social energy level as an AR overlay.</p>
-  <div class="features">
-    <div class="feature">
-      <div class="feature-icon">🧍</div>
-      <div class="feature-text">
-        <strong>Posture analysis</strong>
-        Open vs closed body language
-      </div>
-    </div>
-    <div class="feature">
-      <div class="feature-icon">😊</div>
-      <div class="feature-text">
-        <strong>Expression reading</strong>
-        Smile, brow tension, eye openness
-      </div>
-    </div>
-    <div class="feature">
-      <div class="feature-icon">🔋</div>
-      <div class="feature-text">
-        <strong>Live battery score</strong>
-        Smoothed social energy level
-      </div>
+  <!-- Top system bar -->
+  <div class="sys-bar">
+    <span class="sys-bar-label">EmpathAR <span style="opacity:0.4">// v1.0</span></span>
+    <div class="sys-dots">
+      <div class="sys-dot on"></div>
+      <div class="sys-dot on"></div>
+      <div class="sys-dot"></div>
     </div>
   </div>
-  <button id="start-btn">Start Camera</button>
-  <p id="error-msg"></p>
+
+  <!-- Main content -->
+  <div class="landing-body">
+
+    <!-- Radar -->
+    <div class="radar-wrap">
+      <div class="radar">
+        <div class="radar-ring" style="width:66%;height:66%"></div>
+        <div class="radar-ring" style="width:33%;height:33%"></div>
+        <div class="radar-cross-h"></div>
+        <div class="radar-cross-v"></div>
+        <div class="radar-sweep"></div>
+        <div class="radar-center"></div>
+        <div class="radar-blip" style="top:27%;left:58%;animation-delay:0s"></div>
+        <div class="radar-blip" style="top:61%;left:33%;animation-delay:1.4s"></div>
+        <div class="radar-blip" style="top:44%;left:22%;animation-delay:2.1s"></div>
+      </div>
+      <div class="radar-label">Scanning</div>
+    </div>
+
+    <div class="title-panel bracketed">
+      <div class="title-eyebrow">System<span>//</span>Social Intelligence</div>
+      <h1>Empath<span class="ar-accent">AR</span></h1>
+      <div class="title-sub">Real-time emotional body language</div>
+      <div class="title-desc">Point your camera at someone. Body language signals are read in real time and rendered as an AR social battery overlay.</div>
+    </div>
+
+    <div class="feat-row">
+      <div class="feat-panel bracketed">
+        <div class="feat-id">MOD-01</div>
+        <span class="feat-icon-char">⬡</span>
+        <div class="feat-label">Posture</div>
+      </div>
+      <div class="feat-panel bracketed">
+        <div class="feat-id">MOD-02</div>
+        <span class="feat-icon-char">◈</span>
+        <div class="feat-label">Expression</div>
+      </div>
+      <div class="feat-panel bracketed">
+        <div class="feat-id">MOD-03</div>
+        <span class="feat-icon-char">▣</span>
+        <div class="feat-label">Energy</div>
+      </div>
+    </div>
+
+    <button id="start-btn">[ Initialize Scan ]</button>
+    <p id="error-msg"></p>
+  </div>
+
+  <!-- Bottom system bar -->
+  <div class="sys-bar bottom">
+    <span class="sys-bar-label">Camera required <span style="opacity:0.4">// MediaPipe + WebGL</span></span>
+    <span class="sys-bar-label" style="opacity:0.4">SECURE</span>
+  </div>
 </div>
 
 <script type="module">
@@ -660,7 +923,7 @@ function drawCommentary(x, y, state, battery, now) {
 
   ctx.save();
   ctx.globalAlpha = Math.max(0, Math.min(alpha, 1));
-  ctx.font = '500 12px -apple-system, sans-serif';
+  ctx.font = '500 12px Space Mono, monospace';
   const tw = ctx.measureText(msg).width;
   const pw = tw + 24, ph = 26;
   const px = x - pw / 2, py = y;
@@ -718,7 +981,7 @@ function drawFaceCallout(ax, ay, dx, dy, label, value, color) {
 
   // Pill label
   ctx.save();
-  ctx.font = '10px -apple-system, sans-serif';
+  ctx.font = '10px Space Mono, monospace';
   const BARW = 26;
   const tw = ctx.measureText(label).width;
   const pw = tw + BARW + 22, ph = 18;
@@ -927,7 +1190,7 @@ function drawBatteryIndicator(x, y, battery, state) {
 
   // ── Status label ──
   ctx.save();
-  ctx.font = '600 12px -apple-system, sans-serif';
+  ctx.font = '600 12px Space Mono, monospace';
   const lw = ctx.measureText(lvl.label).width + 22;
   ctx.beginPath();
   ctx.roundRect(x - lw/2, labelCY - 10, lw, 20, 10);
@@ -973,7 +1236,7 @@ function drawBatteryIndicator(x, y, battery, state) {
 
   // ── Percentage text ──
   ctx.save();
-  ctx.font = 'bold 13px -apple-system, sans-serif';
+  ctx.font = 'bold 13px Space Mono, monospace';
   ctx.fillStyle = '#fff';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
@@ -1012,7 +1275,7 @@ function drawSignalBars(cx, y, state) {
     ctx.fillStyle = fillColor;
     ctx.fill();
     // Label
-    ctx.font = '9px -apple-system, sans-serif';
+    ctx.font = '9px Space Mono, monospace';
     ctx.fillStyle = 'rgba(255,255,255,0.4)';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
@@ -1105,7 +1368,7 @@ function detect() {
   // "No person" hint
   if (detectedCount === 0) {
     ctx.save();
-    ctx.font = '14px -apple-system, sans-serif';
+    ctx.font = '14px Space Mono, monospace';
     ctx.fillStyle = 'rgba(255,255,255,0.5)';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
