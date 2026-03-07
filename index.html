@@ -537,44 +537,141 @@
       }
     }
 
-    /* ── Notification feed panel ── */
-    #notif-panel {
+    /* ── Notification tab (top-left trigger) ── */
+    #notif-tab {
+      position: absolute;
+      top: 14px; left: 14px;
+      z-index: 5;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    #notif-badge {
+      background: var(--accent);
+      color: var(--bg);
+      font-family: var(--font-m);
+      font-size: 0.44rem;
+      padding: 1px 5px;
+      min-width: 16px;
+      text-align: center;
+      display: none;
+    }
+    #notif-tab.has-items #notif-badge { display: inline-block; }
+
+    /* ── Drawer overlay ── */
+    #notif-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.55);
+      z-index: 49;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s;
+    }
+    #notif-overlay.open { opacity: 1; pointer-events: all; }
+
+    /* ── Side notification drawer ── */
+    #notif-drawer {
       position: fixed;
-      top: 50px;
-      right: 0;
-      bottom: 60px;
-      width: min(280px, calc(100vw - 24px));
+      top: 0; left: 0; bottom: 0;
+      width: min(300px, 85vw);
+      z-index: 50;
+      background: rgba(3,13,18,0.97);
+      backdrop-filter: blur(16px);
+      border-right: 1px solid var(--accent-bd);
+      display: flex;
+      flex-direction: column;
+      transform: translateX(-100%);
+      transition: transform 0.32s cubic-bezier(0.22,1,0.36,1);
+      pointer-events: all;
+    }
+    #notif-drawer.open { transform: translateX(0); }
+
+    #drawer-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--accent-bd);
+      flex-shrink: 0;
+    }
+    #drawer-title {
+      font-family: var(--font-m);
+      font-size: 0.56rem;
+      letter-spacing: 0.2em;
+      color: var(--accent);
+      text-transform: uppercase;
+    }
+    #drawer-close {
+      background: none; border: none;
+      color: var(--muted); font-size: 1rem;
+      cursor: pointer; padding: 0; line-height: 1;
+      font-family: monospace;
+    }
+    #drawer-close:hover { color: var(--accent); }
+
+    #drawer-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 4px 0 16px;
+      scrollbar-width: thin;
+      scrollbar-color: var(--accent-bd) transparent;
+    }
+    #drawer-empty {
+      padding: 40px 16px;
+      font-family: var(--font-m);
+      font-size: 0.55rem;
+      color: var(--muted);
+      letter-spacing: 0.1em;
+      text-align: center;
+      text-transform: uppercase;
+    }
+
+    .drawer-item {
+      padding: 10px 16px;
+      border-bottom: 1px solid rgba(0,212,184,0.07);
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .drawer-item-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .drawer-item-label {
+      font-family: var(--font-m);
+      font-size: 0.46rem;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+    }
+    .drawer-item-close {
+      background: none; border: none;
+      color: var(--muted); font-size: 0.7rem;
+      cursor: pointer; padding: 0;
+      font-family: monospace; line-height: 1; flex-shrink: 0;
+    }
+    .drawer-item-close:hover { color: var(--accent); }
+    .drawer-item-msg {
+      font-family: var(--font-m);
+      font-size: 0.60rem;
+      color: var(--text);
+      line-height: 1.55;
+      letter-spacing: 0.03em;
+    }
+
+    /* ── Active toast popups (bottom-right) ── */
+    #toast-container {
+      position: fixed;
+      bottom: 76px; right: 0;
       z-index: 10;
       display: flex;
       flex-direction: column;
-      pointer-events: none;
-    }
-
-    #notif-header {
-      font-family: var(--font-m);
-      font-size: 0.48rem;
-      letter-spacing: 0.22em;
-      color: var(--accent);
-      text-transform: uppercase;
-      padding: 0 14px 6px 0;
-      text-align: right;
-      opacity: 0;
-      transition: opacity 0.3s;
-      flex-shrink: 0;
-    }
-    #notif-panel.has-items #notif-header { opacity: 1; }
-
-    #notif-feed {
-      flex: 1;
-      overflow-y: auto;
-      display: flex;
-      flex-direction: column;
       gap: 6px;
-      padding-right: 0;
-      /* hide scrollbar */
-      scrollbar-width: none;
+      align-items: flex-end;
+      pointer-events: none;
+      max-width: min(260px, calc(100vw - 16px));
     }
-    #notif-feed::-webkit-scrollbar { display: none; }
 
     .toast {
       background: rgba(3,13,18,0.92);
@@ -582,57 +679,40 @@
       border: 1px solid var(--accent-bd);
       border-left: 3px solid var(--accent);
       border-right: none;
-      padding: 10px 12px 10px 14px;
+      padding: 9px 12px 9px 12px;
       font-family: var(--font-m);
-      font-size: 0.62rem;
-      line-height: 1.55;
+      font-size: 0.60rem;
+      line-height: 1.5;
       color: var(--text);
-      letter-spacing: 0.04em;
+      letter-spacing: 0.03em;
       width: 100%;
       pointer-events: all;
       transform: translateX(105%);
       opacity: 0;
-      transition: transform 0.38s cubic-bezier(0.22,1,0.36,1), opacity 0.3s ease;
+      transition: transform 0.35s cubic-bezier(0.22,1,0.36,1), opacity 0.3s ease;
       touch-action: pan-x;
       user-select: none;
       flex-shrink: 0;
     }
-
-    .toast.in {
-      transform: translateX(0);
-      opacity: 1;
-    }
-
+    .toast.in  { transform: translateX(0); opacity: 1; }
     .toast.out {
-      transform: translateX(105%);
-      opacity: 0;
+      transform: translateX(105%); opacity: 0;
       transition: transform 0.22s ease-in, opacity 0.18s ease-in;
     }
-
     .toast-header {
-      display: flex;
-      align-items: center;
+      display: flex; align-items: center;
       justify-content: space-between;
-      margin-bottom: 4px;
-      gap: 8px;
+      margin-bottom: 3px; gap: 8px;
     }
-
     .toast-label {
-      font-size: 0.48rem;
-      letter-spacing: 0.18em;
-      color: var(--accent);
+      font-size: 0.46rem; letter-spacing: 0.16em;
       text-transform: uppercase;
     }
-
     .toast-close {
-      background: none;
-      border: none;
-      color: var(--muted);
-      font-size: 0.75rem;
-      line-height: 1;
-      cursor: pointer;
-      padding: 0 0 0 6px;
-      flex-shrink: 0;
+      background: none; border: none;
+      color: var(--muted); font-size: 0.72rem;
+      line-height: 1; cursor: pointer;
+      padding: 0 0 0 4px; flex-shrink: 0;
       font-family: monospace;
     }
     .toast-close:hover { color: var(--accent); }
@@ -660,10 +740,26 @@
       <div class="legend-row"><div class="legend-dot" style="background:#a78bfa"></div>Needs Space (0–19%)</div>
     </div>
   </div>
-  <div id="notif-panel">
-    <div id="notif-header">Tips</div>
-    <div id="notif-feed"></div>
+  <!-- Notification tab -->
+  <button id="notif-tab" class="hud-btn">Tips <span id="notif-badge">0</span></button>
+
+  <!-- Drawer backdrop -->
+  <div id="notif-overlay"></div>
+
+  <!-- Side drawer -->
+  <div id="notif-drawer">
+    <div id="drawer-header">
+      <span id="drawer-title">Tips Feed</span>
+      <button id="drawer-close">✕</button>
+    </div>
+    <div id="drawer-list">
+      <div id="drawer-empty">No tips yet</div>
+    </div>
   </div>
+
+  <!-- Active toast popups -->
+  <div id="toast-container"></div>
+
   <button id="toggle-skeleton" class="hud-btn">Skeleton off</button>
   <button id="toggle-debug" class="hud-btn">Debug</button>
   <div id="debug-panel">
@@ -1076,16 +1172,22 @@ function getCurrentMsg(state, battery, now) {
 }
 
 
-// ── Notification feed system ──────────────────────────────────────────────────
-const notifPanel = document.getElementById('notif-panel');
-const notifFeed  = document.getElementById('notif-feed');
+// ── Notification system ───────────────────────────────────────────────────────
+const notifTab      = document.getElementById('notif-tab');
+const notifBadge    = document.getElementById('notif-badge');
+const notifOverlay  = document.getElementById('notif-overlay');
+const notifDrawer   = document.getElementById('notif-drawer');
+const drawerList    = document.getElementById('drawer-list');
+const drawerEmpty   = document.getElementById('drawer-empty');
+const toastContainer = document.getElementById('toast-container');
 
-// activeMessages: msg string → el — prevents duplicates while visible
-const activeMessages = new Map();
-// Per-person last recommended msg (so we don't spam the same tip)
-const personLastMsg  = {};
-// Per-person set of active msg strings — so we can dismiss all on exit
-const personMsgs     = {};   // { [idx]: Set<string> }
+// Full history: id → { id, idx, pLabel, lLabel, color, msg, drawerEl, toastEl }
+const notifHistory  = new Map();
+let   notifIdSeq    = 0;
+
+// Per-person: last msg shown (to avoid spam) + active item ids
+const personLastMsg = {};
+const personIds     = {};  // idx → Set<id>
 
 function levelKey(battery) {
   if (battery >= 0.80) return 'Energized';
@@ -1095,27 +1197,42 @@ function levelKey(battery) {
   return 'Needs Space';
 }
 
-function removeNotif(msg, el) {
-  activeMessages.delete(msg);
-  // Remove from any person's tracking set
-  Object.values(personMsgs).forEach(s => s.delete(msg));
-  el.classList.remove('in');
-  el.classList.add('out');
-  el.addEventListener('transitionend', () => {
-    el.remove();
-    if (notifFeed.children.length === 0) notifPanel.classList.remove('has-items');
-  }, { once: true });
+function updateBadge() {
+  const n = notifHistory.size;
+  notifBadge.textContent = n;
+  notifTab.classList.toggle('has-items', n > 0);
 }
 
-function dismissPersonNotifs(idx) {
-  const msgs = personMsgs[idx];
-  if (!msgs) return;
-  msgs.forEach(msg => {
-    const el = activeMessages.get(msg);
-    if (el) removeNotif(msg, el);
-  });
-  delete personMsgs[idx];
-  delete personLastMsg[idx];
+function openDrawer()  { notifDrawer.classList.add('open'); notifOverlay.classList.add('open'); }
+function closeDrawer() { notifDrawer.classList.remove('open'); notifOverlay.classList.remove('open'); }
+
+notifTab.addEventListener('click', openDrawer);
+notifOverlay.addEventListener('click', closeDrawer);
+document.getElementById('drawer-close').addEventListener('click', closeDrawer);
+
+// Dismiss from drawer (removes from history + toast if still showing)
+function removeById(id) {
+  const entry = notifHistory.get(id);
+  if (!entry) return;
+  notifHistory.delete(id);
+  // Remove from person tracking
+  if (personIds[entry.idx]) personIds[entry.idx].delete(id);
+  // Remove drawer item
+  if (entry.drawerEl) entry.drawerEl.remove();
+  // Remove active toast if still showing
+  dismissToast(entry);
+  drawerEmpty.style.display = notifHistory.size === 0 ? 'block' : 'none';
+  updateBadge();
+}
+
+// Slide-out and remove toast bubble only (stays in history/drawer)
+function dismissToast(entry) {
+  const el = entry.toastEl;
+  if (!el) return;
+  entry.toastEl = null;
+  el.classList.remove('in');
+  el.classList.add('out');
+  el.addEventListener('transitionend', () => el.remove(), { once: true });
 }
 
 function addSwipeToDismiss(el, onDismiss) {
@@ -1124,55 +1241,75 @@ function addSwipeToDismiss(el, onDismiss) {
   el.addEventListener('touchmove', e => {
     if (startX === null) return;
     dx = e.touches[0].clientX - startX;
-    if (dx > 0) {
-      el.style.transform = `translateX(${dx}px)`;
-      el.style.opacity = String(Math.max(0, 1 - dx / 120));
-    }
+    if (dx > 0) { el.style.transform = `translateX(${dx}px)`; el.style.opacity = String(Math.max(0, 1 - dx / 100)); }
   }, { passive: true });
   el.addEventListener('touchend', () => {
-    if (dx > 60) { onDismiss(); }
-    else { el.style.transform = ''; el.style.opacity = ''; }
+    if (dx > 55) onDismiss(); else { el.style.transform = ''; el.style.opacity = ''; }
     startX = null; dx = 0;
   });
 }
 
 function addNotif(idx, msg, battery) {
-  // Already visible — don't duplicate
-  if (activeMessages.has(msg)) return;
+  // Don't duplicate the same message that's already in history
+  for (const entry of notifHistory.values()) {
+    if (entry.msg === msg && entry.idx === idx) return;
+  }
 
+  const id     = ++notifIdSeq;
   const lvl    = levelFor(battery);
   const pLabel = `P${idx + 1}`;
   const lLabel = levelKey(battery);
+  const entry  = { id, idx, pLabel, lLabel, color: lvl.color, msg, drawerEl: null, toastEl: null };
+  notifHistory.set(id, entry);
+  if (!personIds[idx]) personIds[idx] = new Set();
+  personIds[idx].add(id);
 
-  const el = document.createElement('div');
-  el.className = 'toast';
-  el.innerHTML =
+  // ── Drawer item ──
+  drawerEmpty.style.display = 'none';
+  const dEl = document.createElement('div');
+  dEl.className = 'drawer-item';
+  dEl.innerHTML =
+    `<div class="drawer-item-header">` +
+      `<span class="drawer-item-label" style="color:${lvl.color}">${pLabel} · ${lLabel}</span>` +
+      `<button class="drawer-item-close">✕</button>` +
+    `</div><div class="drawer-item-msg">${msg}</div>`;
+  dEl.querySelector('.drawer-item-close').addEventListener('click', () => removeById(id));
+  drawerList.appendChild(dEl);
+  entry.drawerEl = dEl;
+  drawerList.scrollTop = drawerList.scrollHeight;
+  updateBadge();
+
+  // ── Active toast bubble (bottom-right) ──
+  const tEl = document.createElement('div');
+  tEl.className = 'toast';
+  tEl.innerHTML =
     `<div class="toast-header">` +
-      `<div class="toast-label" style="color:${lvl.color}">${pLabel} &nbsp;·&nbsp; ${lLabel}</div>` +
-      `<button class="toast-close" aria-label="Dismiss">✕</button>` +
+      `<span class="toast-label" style="color:${lvl.color}">${pLabel} · ${lLabel}</span>` +
+      `<button class="toast-close">✕</button>` +
     `</div>${msg}`;
-
-  notifFeed.appendChild(el);
-  activeMessages.set(msg, el);
-  if (!personMsgs[idx]) personMsgs[idx] = new Set();
-  personMsgs[idx].add(msg);
-  notifPanel.classList.add('has-items');
-
-  el.querySelector('.toast-close').addEventListener('click', () => removeNotif(msg, el));
-  addSwipeToDismiss(el, () => removeNotif(msg, el));
-
-  requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add('in')));
-
-  // Scroll feed to bottom so newest is visible
-  notifFeed.scrollTop = notifFeed.scrollHeight;
+  tEl.querySelector('.toast-close').addEventListener('click', () => dismissToast(entry));
+  addSwipeToDismiss(tEl, () => dismissToast(entry));
+  toastContainer.appendChild(tEl);
+  entry.toastEl = tEl;
+  requestAnimationFrame(() => requestAnimationFrame(() => tEl.classList.add('in')));
 }
 
-// Called from the render loop for every detected person
+// Dismiss all active toasts (not history) for a person when they leave frame
+function dismissPersonNotifs(idx) {
+  const ids = personIds[idx];
+  if (!ids) return;
+  ids.forEach(id => {
+    const entry = notifHistory.get(id);
+    if (entry) dismissToast(entry);
+  });
+  delete personIds[idx];
+  delete personLastMsg[idx];
+}
+
+// Called from render loop for every detected person
 function updateToast(idx, state, battery, now) {
   const msg = getCurrentMsg(state, battery, now);
-  if (!msg) return;
-  // Only add if this is a new message for this person
-  if (msg === personLastMsg[idx]) return;
+  if (!msg || msg === personLastMsg[idx]) return;
   personLastMsg[idx] = msg;
   addNotif(idx, msg, battery);
 }
@@ -1534,8 +1671,8 @@ function detect() {
   detectedCount = poses.length;
   updateStatus(detectedCount);
 
-  // Dismiss all notifs for persons no longer in frame
-  Object.keys(personMsgs).forEach(k => {
+  // Dismiss active toasts for persons no longer in frame
+  Object.keys(personIds).forEach(k => {
     if (parseInt(k) >= poses.length) dismissPersonNotifs(parseInt(k));
   });
 
