@@ -899,8 +899,9 @@ function getOrCreateState(idx) {
   return personStates[idx];
 }
 
-const SMOOTH_UP = 0.07;   // slower to charge
-const SMOOTH_DOWN = 0.14; // faster to drain
+const SMOOTH_UP   = 0.07;  // slower to charge
+const SMOOTH_DOWN = 0.14;  // faster to drain
+const POS_ALPHA   = 0.40;  // drawing-position EMA — responsive but jitter-free
 
 function updateState(state, poseLm, faceBlends) {
   const { postureScore: rawPosture, crossedArms: rawCrossed } = computePostureScore(poseLm);
@@ -1243,10 +1244,8 @@ function drawFaceCallout(ax, ay, dx, dy, label, value, color) {
   ctx.restore();
 }
 
-// Draw all face signal labels anchored to landmarks
-function drawFaceLabels(faceLm, blendshapes, map) {
-  if (!faceLm || faceLm.length < 400) return;
-
+// Draw all face signal labels using pre-smoothed canvas positions
+function drawFaceLabels(pts, blendshapes) {
   const bs = {};
   if (blendshapes && blendshapes[0]) {
     blendshapes[0].categories.forEach(c => { bs[c.categoryName] = c.score; });
@@ -1254,22 +1253,11 @@ function drawFaceLabels(faceLm, blendshapes, map) {
 
   const smile   = Math.min(((bs.mouthSmileLeft || 0) + (bs.mouthSmileRight|| 0)) / 2 * 4.0, 1);
   const mFrown  = Math.min(((bs.mouthFrownLeft || 0) + (bs.mouthFrownRight|| 0)) / 2 * 9.0, 1);
-  const jawOpen =   bs.jawOpen        || 0;
+  const jawOpen =   bs.jawOpen || 0;
 
-  // ── Right mouth corner → Smile (label right) ──
-  const smilePt = lmToCanvas(faceLm[291], map);
-  const smileColor = lerpColor('#64748b', '#6ee7b7', smile);
-  drawFaceCallout(smilePt.x, smilePt.y, 1, 0, 'Smile', smile, smileColor);
-
-  // ── Left mouth corner → Frown (label left) ──
-  const frownPt = lmToCanvas(faceLm[61], map);
-  const frownColor = lerpColor('#64748b', '#f87171', mFrown);
-  drawFaceCallout(frownPt.x, frownPt.y, -1, 0, 'Frown', mFrown, frownColor);
-
-  // ── Chin/jaw → Talking (label below) ──
-  const chinPt = lmToCanvas(faceLm[152], map);
-  const talkColor = lerpColor('#64748b', '#a78bfa', jawOpen);
-  drawFaceCallout(chinPt.x, chinPt.y, 0, 1, 'Talking', jawOpen, talkColor);
+  drawFaceCallout(pts.smileX, pts.smileY,  1,  0, 'Smile',   smile,   lerpColor('#64748b', '#6ee7b7', smile));
+  drawFaceCallout(pts.frownX, pts.frownY, -1,  0, 'Frown',   mFrown,  lerpColor('#64748b', '#f87171', mFrown));
+  drawFaceCallout(pts.chinX,  pts.chinY,   0,  1, 'Talking', jawOpen, lerpColor('#64748b', '#a78bfa', jawOpen));
 }
 
 // ── Drawing ───────────────────────────────────────────────────────────────────
@@ -1563,40 +1551,60 @@ function detect() {
     const visible = poseLm.filter(l => (l.visibility || 0) > 0.4);
     if (visible.length < 4) return;
 
-    const pts = visible.map(l => lmToCanvas(l, map));
-    const xs = pts.map(p => p.x), ys = pts.map(p => p.y);
-    const minX = Math.min(...xs), maxX = Math.max(...xs);
-    const minY = Math.min(...ys), maxY = Math.max(...ys);
-    const cx = (minX + maxX) / 2;
-    const cy = (minY + maxY) / 2;
-    const rx = (maxX - minX) / 2 * 1.25;
-    const ry = (maxY - minY) / 2 * 1.15;
+    const rawPts = visible.map(l => lmToCanvas(l, map));
+    const xs = rawPts.map(p => p.x), ys = rawPts.map(p => p.y);
+    const rawMinX = Math.min(...xs), rawMaxX = Math.max(...xs);
+    const rawMinY = Math.min(...ys), rawMaxY = Math.max(...ys);
 
-    // Camera-focus corner brackets
-    drawFocusBrackets(minX, minY, maxX, maxY, lvl.color, lvl.glow, battery, now);
+    // ── Smooth all drawing positions via per-state EMA ──────────────────────
+    if (!state.pos) state.pos = {};
+    const sp = state.pos;
+    const sm = (k, v) => (sp[k] = sp[k] === undefined ? v : sp[k] * (1 - POS_ALPHA) + v * POS_ALPHA);
 
-    // Aura
+    // Bounding box
+    sm('minX', rawMinX); sm('minY', rawMinY);
+    sm('maxX', rawMaxX); sm('maxY', rawMaxY);
+
+    // Head anchor points
+    const rawNose = lmToCanvas(poseLm[0], map);
+    const rawEarL = lmToCanvas(poseLm[7], map);
+    const rawEarR = lmToCanvas(poseLm[8], map);
+    sm('noseX', rawNose.x); sm('noseY', rawNose.y);
+    sm('headW', Math.max(Math.abs(rawEarR.x - rawEarL.x), 60));
+
+    // Face label anchors (only if face model has data)
+    const faceLm = faceLandmarksList[i];
+    if (faceLm && faceLm.length >= 400) {
+      const rSmile = lmToCanvas(faceLm[291], map);
+      const rFrown = lmToCanvas(faceLm[61],  map);
+      const rChin  = lmToCanvas(faceLm[152], map);
+      sm('fSmileX', rSmile.x); sm('fSmileY', rSmile.y);
+      sm('fFrownX', rFrown.x); sm('fFrownY', rFrown.y);
+      sm('fChinX',  rChin.x);  sm('fChinY',  rChin.y);
+    }
+
+    // ── Draw using smoothed positions ────────────────────────────────────────
+    const cx = (sp.minX + sp.maxX) / 2;
+    const cy = (sp.minY + sp.maxY) / 2;
+    const rx = (sp.maxX - sp.minX) / 2 * 1.25;
+    const ry = (sp.maxY - sp.minY) / 2 * 1.15;
+
+    drawFocusBrackets(sp.minX, sp.minY, sp.maxX, sp.maxY, lvl.color, lvl.glow, battery, now);
     drawAura(cx, cy, rx, ry, lvl.color, lvl.glow, battery);
 
-    // Skeleton (optional)
     if (showSkeleton) drawSkeleton(poseLm, map, 0.7);
 
-    // ── Floating battery above head ──
-    const nosePt   = lmToCanvas(poseLm[0], map);
-    const earL     = lmToCanvas(poseLm[7], map);
-    const earR     = lmToCanvas(poseLm[8], map);
-    const headW    = Math.max(Math.abs(earR.x - earL.x), 60);
-    const headTopY = nosePt.y - headW * 0.95;          // estimated crown of head
-    const floatOff = Math.sin(now * 0.0016 + i * 1.4) * 9; // gentle bob per person
-    const haloY    = headTopY + headW * 0.06;          // halo sits just above crown
-    const clusterBottom = headTopY - 18 - floatOff;   // cluster floats above halo
+    // Floating battery above head
+    const floatOff      = Math.sin(now * 0.0016 + i * 1.4) * 9;
+    const headTopY      = sp.noseY - sp.headW * 0.95;
+    const clusterBottom = headTopY - 18 - floatOff;
 
-    drawBatteryIndicator(nosePt.x, clusterBottom, battery, state);
-    // Toast is DOM-based; one toast slot per person
+    drawBatteryIndicator(sp.noseX, clusterBottom, battery, state);
     updateToast(i, state, battery, now);
-    // Face signal labels (only when face model is loaded)
-    if (faceLandmarksList[i]) {
-      drawFaceLabels(faceLandmarksList[i], faceBlendshapes[i] ? [faceBlendshapes[i]] : null, map);
+
+    // Face labels use smoothed anchor points
+    if (faceLm && faceLm.length >= 400 && sp.fSmileX !== undefined) {
+      drawFaceLabels(sp, faceBlendshapes[i] ? [faceBlendshapes[i]] : null);
     }
     if (i === 0) updateDebugPanel(state);
   });
