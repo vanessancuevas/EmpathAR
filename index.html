@@ -733,11 +733,11 @@
       <span id="legend-toggle-icon">▾</span>
     </button>
     <div id="legend-rows">
-      <div class="legend-row"><div class="legend-dot" style="background:#6ee7b7"></div>Energized (80–100%)</div>
-      <div class="legend-row"><div class="legend-dot" style="background:#60a5fa"></div>Present (60–79%)</div>
-      <div class="legend-row"><div class="legend-dot" style="background:#fbbf24"></div>Engaged (40–59%)</div>
-      <div class="legend-row"><div class="legend-dot" style="background:#f97316"></div>Fading (20–39%)</div>
-      <div class="legend-row"><div class="legend-dot" style="background:#a78bfa"></div>Needs Space (0–19%)</div>
+      <div class="legend-row"><div class="legend-dot" style="background:#6ee7b7"></div>Energized — Expand &amp; Open Up</div>
+      <div class="legend-row"><div class="legend-dot" style="background:#60a5fa"></div>Present — Stay &amp; Connect</div>
+      <div class="legend-row"><div class="legend-dot" style="background:#fbbf24"></div>Engaged — Keep It Light</div>
+      <div class="legend-row"><div class="legend-dot" style="background:#f97316"></div>Fading — Wind Down &amp; Close</div>
+      <div class="legend-row"><div class="legend-dot" style="background:#a78bfa"></div>Needs Space — Give Space</div>
     </div>
   </div>
   <!-- Notification tab -->
@@ -863,11 +863,11 @@ const personStates = {};
 
 // Battery level → visual config
 const LEVELS = [
-  { min: 0.80, color: '#6ee7b7', glow: '#34d399', label: '✦ Energized'   },
-  { min: 0.60, color: '#60a5fa', glow: '#3b82f6', label: '● Present'     },
-  { min: 0.40, color: '#fbbf24', glow: '#f59e0b', label: '◐ Engaged'     },
-  { min: 0.20, color: '#f97316', glow: '#ea580c', label: '○ Fading'      },
-  { min: 0.00, color: '#a78bfa', glow: '#7c3aed', label: '↓ Needs Space' },
+  { min: 0.80, color: '#6ee7b7', glow: '#34d399', label: '✦ Energized',   action: 'Expand & Open Up'  },
+  { min: 0.60, color: '#60a5fa', glow: '#3b82f6', label: '● Present',     action: 'Stay & Connect'    },
+  { min: 0.40, color: '#fbbf24', glow: '#f59e0b', label: '◐ Engaged',     action: 'Keep It Light'     },
+  { min: 0.20, color: '#f97316', glow: '#ea580c', label: '○ Fading',      action: 'Wind Down & Close' },
+  { min: 0.00, color: '#a78bfa', glow: '#7c3aed', label: '↓ Needs Space', action: 'Give Space'        },
 ];
 
 function levelFor(pct) {
@@ -1544,18 +1544,30 @@ function drawBatteryIndicator(x, y, battery, state) {
   // ── Signal bars ──
   drawSignalBars(x, barsTop, state);
 
-  // ── Status label ──
+  // ── Status label + action hint ──
   ctx.save();
   ctx.font = '600 12px Space Mono, monospace';
-  const lw = ctx.measureText(lvl.label).width + 22;
+  const lw = Math.max(ctx.measureText(lvl.label).width, ctx.measureText(lvl.action).width) + 24;
+
+  // Background pill (taller to fit two lines)
   ctx.beginPath();
-  ctx.roundRect(x - lw/2, labelCY - 10, lw, 20, 10);
-  ctx.fillStyle = 'rgba(0,0,0,0.62)';
+  ctx.roundRect(x - lw/2, labelCY - 16, lw, 32, 8);
+  ctx.fillStyle = 'rgba(0,0,0,0.68)';
   ctx.fill();
+  ctx.strokeStyle = lvl.color + '44';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  // State label (top line)
   ctx.fillStyle = lvl.color;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText(lvl.label, x, labelCY);
+  ctx.fillText(lvl.label, x, labelCY - 5);
+
+  // Action hint (bottom line, smaller + dimmer)
+  ctx.font = '9px Space Mono, monospace';
+  ctx.fillStyle = lvl.color + 'bb';
+  ctx.fillText(lvl.action, x, labelCY + 9);
   ctx.restore();
 
   // ── Battery shell ──
