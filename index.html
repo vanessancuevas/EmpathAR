@@ -1079,10 +1079,12 @@ function getCurrentMsg(state, battery, now) {
 const notifPanel = document.getElementById('notif-panel');
 const notifFeed  = document.getElementById('notif-feed');
 
-// activeMessages: msg string → { el } — prevents duplicates while visible
+// activeMessages: msg string → el — prevents duplicates while visible
 const activeMessages = new Map();
 // Per-person last recommended msg (so we don't spam the same tip)
 const personLastMsg  = {};
+// Per-person set of active msg strings — so we can dismiss all on exit
+const personMsgs     = {};   // { [idx]: Set<string> }
 
 function levelKey(battery) {
   if (battery >= 0.80) return 'Energized';
@@ -1094,12 +1096,25 @@ function levelKey(battery) {
 
 function removeNotif(msg, el) {
   activeMessages.delete(msg);
+  // Remove from any person's tracking set
+  Object.values(personMsgs).forEach(s => s.delete(msg));
   el.classList.remove('in');
   el.classList.add('out');
   el.addEventListener('transitionend', () => {
     el.remove();
     if (notifFeed.children.length === 0) notifPanel.classList.remove('has-items');
   }, { once: true });
+}
+
+function dismissPersonNotifs(idx) {
+  const msgs = personMsgs[idx];
+  if (!msgs) return;
+  msgs.forEach(msg => {
+    const el = activeMessages.get(msg);
+    if (el) removeNotif(msg, el);
+  });
+  delete personMsgs[idx];
+  delete personLastMsg[idx];
 }
 
 function addSwipeToDismiss(el, onDismiss) {
@@ -1138,6 +1153,8 @@ function addNotif(idx, msg, battery) {
 
   notifFeed.appendChild(el);
   activeMessages.set(msg, el);
+  if (!personMsgs[idx]) personMsgs[idx] = new Set();
+  personMsgs[idx].add(msg);
   notifPanel.classList.add('has-items');
 
   el.querySelector('.toast-close').addEventListener('click', () => removeNotif(msg, el));
@@ -1529,9 +1546,9 @@ function detect() {
   detectedCount = poses.length;
   updateStatus(detectedCount);
 
-  // Clear last-msg for persons no longer in frame so tips re-fire when they return
-  Object.keys(personLastMsg).forEach(k => {
-    if (parseInt(k) >= poses.length) delete personLastMsg[k];
+  // Dismiss all notifs for persons no longer in frame
+  Object.keys(personMsgs).forEach(k => {
+    if (parseInt(k) >= poses.length) dismissPersonNotifs(parseInt(k));
   });
 
   poses.forEach((poseLm, i) => {
