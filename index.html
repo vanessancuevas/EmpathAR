@@ -971,51 +971,59 @@ function getCurrentMsg(state, battery, now) {
 
 
 // ── Toast notification system ─────────────────────────────────────────────────
-const toastStack  = document.getElementById('toast-stack');
-let   lastToastMsg = '';
-let   toastTimeout = null;
+const toastStack = document.getElementById('toast-stack');
 
-const LEVEL_LABELS = {
-  energized:  'Energized',
-  present:    'Present',
-  engaged:    'Engaged',
-  fading:     'Fading',
-  needsSpace: 'Needs Space',
-};
+// Per-person state: last shown msg and active toast element
+const personToasts = {};   // { [idx]: { msg, el, timer } }
 
-function showToast(msg, levelLabel, levelColor) {
-  if (msg === lastToastMsg) return;   // don't repeat the same tip back-to-back
-  lastToastMsg = msg;
+function levelKey(battery) {
+  if (battery >= 0.80) return 'Energized';
+  if (battery >= 0.60) return 'Present';
+  if (battery >= 0.40) return 'Engaged';
+  if (battery >= 0.20) return 'Fading';
+  return 'Needs Space';
+}
+
+function dismissToast(entry) {
+  if (!entry || !entry.el) return;
+  clearTimeout(entry.timer);
+  const el = entry.el;
+  entry.el = null;
+  el.classList.remove('in');
+  el.classList.add('out');
+  el.addEventListener('transitionend', () => el.remove(), { once: true });
+}
+
+function showToast(idx, msg, battery) {
+  const entry = personToasts[idx] || (personToasts[idx] = { msg: '', el: null, timer: null });
+
+  if (msg === entry.msg && entry.el) return;  // same tip still showing
+  entry.msg = msg;
+
+  // Dismiss any existing toast for this person
+  dismissToast(entry);
+
+  const lvl    = levelFor(battery);
+  const pLabel = `P${idx + 1}`;
+  const lLabel = levelKey(battery);
 
   const el = document.createElement('div');
   el.className = 'toast';
-  el.innerHTML = `<div class="toast-label" style="color:${levelColor}">${levelLabel}</div>${msg}`;
+  el.innerHTML =
+    `<div class="toast-label" style="color:${lvl.color}">${pLabel} &nbsp;·&nbsp; ${lLabel}</div>${msg}`;
   toastStack.appendChild(el);
+  entry.el = el;
 
-  // Slide in
   requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add('in')));
 
-  // Slide out after 5 s, then remove
-  const hide = () => {
-    el.classList.remove('in');
-    el.classList.add('out');
-    el.addEventListener('transitionend', () => el.remove(), { once: true });
-  };
-  toastTimeout = setTimeout(hide, 5000);
+  entry.timer = setTimeout(() => dismissToast(entry), 6000);
 }
 
-// Called from the render loop with the first detected person's state
-function updateToast(state, battery, now) {
+// Called from the render loop for every detected person
+function updateToast(idx, state, battery, now) {
   const msg = getCurrentMsg(state, battery, now);
   if (!msg) return;
-  const lvl = levelFor(battery);
-  // Map battery level to a label key
-  let key = 'needsSpace';
-  if (battery >= 0.80) key = 'energized';
-  else if (battery >= 0.60) key = 'present';
-  else if (battery >= 0.40) key = 'engaged';
-  else if (battery >= 0.20) key = 'fading';
-  showToast(msg, LEVEL_LABELS[key], lvl.color);
+  showToast(idx, msg, battery);
 }
 
 // ── Face label helpers ────────────────────────────────────────────────────────
@@ -1388,6 +1396,11 @@ function detect() {
   detectedCount = poses.length;
   updateStatus(detectedCount);
 
+  // Dismiss toasts for persons no longer in frame
+  Object.keys(personToasts).forEach(k => {
+    if (parseInt(k) >= poses.length) dismissToast(personToasts[k]);
+  });
+
   poses.forEach((poseLm, i) => {
     const state = getOrCreateState(i);
     const blends = faceBlendshapes[i] ? [faceBlendshapes[i]] : null;
@@ -1430,8 +1443,8 @@ function detect() {
 
     drawHalo(nosePt.x, haloY, headW * 0.60, lvl.color, lvl.glow, floatOff);
     drawBatteryIndicator(nosePt.x, clusterBottom, battery, state);
-    // Toast is DOM-based; only drive it from the first detected person
-    if (i === 0) updateToast(state, battery, now);
+    // Toast is DOM-based; one toast slot per person
+    updateToast(i, state, battery, now);
     // Face signal labels (only when face model is loaded)
     if (faceLandmarksList[i]) {
       drawFaceLabels(faceLandmarksList[i], faceBlendshapes[i] ? [faceBlendshapes[i]] : null, map);
