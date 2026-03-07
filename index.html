@@ -416,7 +416,11 @@ function computeFaceScore(blendshapes) {
 
   // Raw values (MediaPipe keeps these in 0.0–0.3 range for most expressions)
   const rawSmile    = ((bs.mouthSmileLeft  || 0) + (bs.mouthSmileRight  || 0)) / 2;
-  const rawFrown    = ((bs.mouthFrownLeft  || 0) + (bs.mouthFrownRight  || 0)) / 2;
+  const rawFrown    = Math.max(
+    ((bs.mouthFrownLeft  || 0) + (bs.mouthFrownRight  || 0)) / 2,
+    ((bs.mouthLowerDownLeft || 0) + (bs.mouthLowerDownRight || 0)) / 2 * 0.5,
+    (bs.mouthPressLeft || 0 + (bs.mouthPressRight || 0)) / 2 * 0.4
+  );
   const rawBrowDown = ((bs.browDownLeft    || 0) + (bs.browDownRight    || 0)) / 2;
   const rawBrowUp   = ((bs.browOuterUpLeft || 0) + (bs.browOuterUpRight || 0)
                     +  (bs.browInnerUp     || 0)) / 3;
@@ -425,7 +429,7 @@ function computeFaceScore(blendshapes) {
 
   // Amplify — values are naturally tiny; scale to a usable 0–1 range
   const smile    = Math.min(rawSmile    * 4.0, 1);
-  const mFrown   = Math.min(rawFrown    * 5.0, 1);
+  const mFrown   = Math.min(rawFrown    * 9.0, 1);
   const browDown = Math.min(rawBrowDown * 3.5, 1);
   const browUp   = Math.min(rawBrowUp   * 3.0, 1);
   const eyeOpen  = 1 - Math.min(rawEyeBlink * 3.0, 1);
@@ -709,7 +713,7 @@ function drawFaceLabels(faceLm, blendshapes, map) {
   // Use same amplification as computeFaceScore so labels match battery behavior
   const browDown  = Math.min(((bs.browDownLeft   || 0) + (bs.browDownRight  || 0)) / 2 * 3.5, 1);
   const smile     = Math.min(((bs.mouthSmileLeft || 0) + (bs.mouthSmileRight|| 0)) / 2 * 4.0, 1);
-  const mFrown    = Math.min(((bs.mouthFrownLeft || 0) + (bs.mouthFrownRight|| 0)) / 2 * 5.0, 1);
+  const mFrown    = Math.min(((bs.mouthFrownLeft || 0) + (bs.mouthFrownRight|| 0)) / 2 * 9.0, 1);
   const jawOpen   =   bs.jawOpen        || 0;
 
   // ── Eyebrow region (between brows, label upper-left) ──
@@ -811,19 +815,6 @@ function drawFocusBrackets(x1, y1, x2, y2, color, glowColor, battery, now) {
 
   ctx.restore();
 
-  // Scan-line — smooth sine oscillation, no reset jitter
-  const scanT = (Math.sin(now * 0.0011) + 1) / 2; // 0→1→0 every ~5.7s
-  const scanY = ty + (by - ty) * scanT;
-  ctx.save();
-  const scanGrad = ctx.createLinearGradient(lx, scanY - 14, lx, scanY + 14);
-  scanGrad.addColorStop(0,    color + '00');
-  scanGrad.addColorStop(0.45, color + '33');
-  scanGrad.addColorStop(0.5,  color + '66');
-  scanGrad.addColorStop(0.55, color + '33');
-  scanGrad.addColorStop(1,    color + '00');
-  ctx.fillStyle = scanGrad;
-  ctx.fillRect(lx, scanY - 14, rx - lx, 28);
-  ctx.restore();
 }
 
 function drawHalo(cx, cy, rx, color, glowColor, floatOffset) {
