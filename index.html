@@ -434,10 +434,10 @@ function computeFaceScore(blendshapes) {
   const browUp   = Math.min(rawBrowUp   * 3.0, 1);
   const eyeOpen  = 1 - Math.min(rawEyeBlink * 3.0, 1);
 
-  // Tension: requires active muscle effort — browDown AND/OR noseSneer (wrinkle signal)
-  // Deadzone of 0.06 so resting brow position never registers
-  const rawTension = rawBrowDown * 0.55 + rawNoseSneer * 0.45;
-  const browDown   = Math.min(Math.max(rawTension - 0.06, 0) / 0.94 * 2.5, 1);
+  // Tension: browDown is primary, noseSneer (wrinkle) adds boost but isn't required
+  // Small deadzone (0.04) so resting brow doesn't register, then amplify
+  const rawTension = rawBrowDown + rawNoseSneer * 0.4;
+  const browDown   = Math.min(Math.max(rawTension - 0.04, 0) * 4.0, 1);
 
   // Angry: brow tension AND frown together
   const angryScore = Math.min(browDown, 1) * Math.min(mFrown, 1);
@@ -716,9 +716,9 @@ function drawFaceLabels(faceLm, blendshapes, map) {
   }
 
   // Use same amplification as computeFaceScore so labels match battery behavior
-  const rawTensionL = ((bs.browDownLeft  || 0) + (bs.browDownRight  || 0)) / 2 * 0.55
-                    + ((bs.noseSneerLeft || 0) + (bs.noseSneerRight || 0)) / 2 * 0.45;
-  const browDown  = Math.min(Math.max(rawTensionL - 0.06, 0) / 0.94 * 2.5, 1);
+  const rawTensionL = ((bs.browDownLeft  || 0) + (bs.browDownRight  || 0)) / 2
+                    + ((bs.noseSneerLeft || 0) + (bs.noseSneerRight || 0)) / 2 * 0.4;
+  const browDown  = Math.min(Math.max(rawTensionL - 0.04, 0) * 4.0, 1);
   const smile     = Math.min(((bs.mouthSmileLeft || 0) + (bs.mouthSmileRight|| 0)) / 2 * 4.0, 1);
   const mFrown    = Math.min(((bs.mouthFrownLeft || 0) + (bs.mouthFrownRight|| 0)) / 2 * 9.0, 1);
   const jawOpen   =   bs.jawOpen        || 0;
