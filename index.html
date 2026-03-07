@@ -491,6 +491,55 @@
       color: var(--muted);
       text-transform: uppercase;
     }
+
+    /* ── Toast notifications ── */
+    #toast-stack {
+      position: fixed;
+      bottom: 80px;
+      right: 16px;
+      z-index: 10;
+      display: flex;
+      flex-direction: column-reverse;
+      gap: 8px;
+      align-items: flex-end;
+      pointer-events: none;
+      max-width: min(320px, calc(100vw - 32px));
+    }
+
+    .toast {
+      background: rgba(3,13,18,0.90);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--accent-bd);
+      border-left: 3px solid var(--accent);
+      padding: 10px 14px;
+      font-family: var(--font-m);
+      font-size: 0.62rem;
+      line-height: 1.55;
+      color: var(--text);
+      letter-spacing: 0.04em;
+      max-width: 100%;
+      transform: translateX(120%);
+      opacity: 0;
+      transition: transform 0.35s cubic-bezier(0.22,1,0.36,1), opacity 0.35s ease;
+    }
+
+    .toast.in {
+      transform: translateX(0);
+      opacity: 1;
+    }
+
+    .toast.out {
+      transform: translateX(120%);
+      opacity: 0;
+    }
+
+    .toast-label {
+      font-size: 0.48rem;
+      letter-spacing: 0.18em;
+      color: var(--accent);
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
   </style>
 </head>
 <body>
@@ -509,6 +558,7 @@
     <div class="legend-row"><div class="legend-dot" style="background:#f97316"></div>Fading (20–39%)</div>
     <div class="legend-row"><div class="legend-dot" style="background:#a78bfa"></div>Needs Space (0–19%)</div>
   </div>
+  <div id="toast-stack"></div>
   <button id="toggle-skeleton" class="hud-btn">Skeleton off</button>
   <button id="toggle-debug" class="hud-btn">Debug</button>
   <div id="debug-panel">
@@ -656,24 +706,29 @@ function lmToCanvas(lm, map) {
 // ── Signal computation ────────────────────────────────────────────────────────
 
 function computePostureScore(lm) {
-  // Openness: wrist spread vs shoulder width
-  const shoulderW = Math.abs(lm[11].x - lm[12].x) + 0.001;
+  const shoulderW  = Math.abs(lm[11].x - lm[12].x) + 0.001;
   const wristSpread = Math.abs(lm[15].x - lm[16].x);
-  const openness = Math.min(wristSpread / (shoulderW * 1.6), 1.0);
+  const openness   = Math.min(wristSpread / (shoulderW * 1.6), 1.0);
 
   // Uprightness: head well above shoulders
-  const noseY    = lm[0].y;
+  const noseY     = lm[0].y;
   const shoulderY = (lm[11].y + lm[12].y) / 2;
   const hipY      = (lm[23].y + lm[24].y) / 2;
   const bodyH     = Math.abs(hipY - noseY) + 0.001;
   const headLift  = Math.min(Math.abs(shoulderY - noseY) / (bodyH * 0.38), 1.0);
 
-  // Shoulder tension: high shoulders (ears close to shoulders) = tense
-  const earMidY      = (lm[7].y + lm[8].y) / 2;
+  // Shoulder tension: high shoulders = tense
+  const earMidY = (lm[7].y + lm[8].y) / 2;
   const shoulderTension = Math.max(0, 1 - Math.abs(earMidY - shoulderY) / (bodyH * 0.18));
   const relaxedScore = 1 - shoulderTension;
 
-  return openness * 0.45 + headLift * 0.35 + relaxedScore * 0.20;
+  // Crossed arms: wrists close together AND at torso height
+  const wristMidY   = (lm[15].y + lm[16].y) / 2;
+  const wristInTorso = wristMidY > shoulderY && wristMidY < hipY;
+  const crossedArms  = (wristSpread < shoulderW * 0.45 && wristInTorso) ? 1.0 : 0.0;
+
+  const postureScore = openness * 0.45 + headLift * 0.35 + relaxedScore * 0.20;
+  return { postureScore, crossedArms };
 }
 
 // Raw blendshape values for debug display
@@ -686,33 +741,24 @@ function computeFaceScore(blendshapes) {
   blendshapes[0].categories.forEach(c => { bs[c.categoryName] = c.score; });
   _dbgBS = bs; // expose for debug panel
 
-  // Raw values (MediaPipe keeps these in 0.0–0.3 range for most expressions)
-  const rawSmile    = ((bs.mouthSmileLeft  || 0) + (bs.mouthSmileRight  || 0)) / 2;
-  const rawFrown    = Math.max(
-    ((bs.mouthFrownLeft  || 0) + (bs.mouthFrownRight  || 0)) / 2,
-    ((bs.mouthLowerDownLeft || 0) + (bs.mouthLowerDownRight || 0)) / 2 * 0.5,
-    (bs.mouthPressLeft || 0 + (bs.mouthPressRight || 0)) / 2 * 0.4
-  );
-  const rawBrowUp   = ((bs.browOuterUpLeft || 0) + (bs.browOuterUpRight || 0)
-                    +  (bs.browInnerUp     || 0)) / 3;
-  const rawEyeBlink = ((bs.eyeBlinkLeft   || 0) + (bs.eyeBlinkRight    || 0)) / 2;
-  const jaw         =   bs.jawOpen        || 0;
+  const rawSmile = ((bs.mouthSmileLeft  || 0) + (bs.mouthSmileRight  || 0)) / 2;
+  // Frown uses ONLY dedicated frown blendshapes — mouthLowerDown fires during smiles, excluded
+  const rawFrown = ((bs.mouthFrownLeft  || 0) + (bs.mouthFrownRight  || 0)) / 2;
+  const jaw      =   bs.jawOpen         || 0;
 
   // Amplify — values are naturally tiny; scale to a usable 0–1 range
-  const smile   = Math.min(rawSmile * 4.0, 1);
-  const mFrown  = Math.min(rawFrown * 9.0, 1);
-  const browUp  = Math.min(rawBrowUp  * 3.0, 1);
-  const eyeOpen = 1 - Math.min(rawEyeBlink * 3.0, 1);
+  const smile  = Math.min(rawSmile * 4.0, 1);
+  const mFrown = Math.min(rawFrown * 9.0, 1);
 
-  // Angry: strong frown alone triggers needs-space
-  const angryScore = Math.min(mFrown * 1.2, 1);
+  // Suppress frown when smiling — physically can't be angry while genuinely smiling
+  const netFrown   = Math.max(0, mFrown - smile * 0.9);
+  const angryScore = netFrown;
 
+  // Smile is the primary positive driver; netFrown pulls down only when smile is absent
   const faceScore = Math.max(0, Math.min(1,
-    0.50
-    + smile   * 0.45
-    - mFrown  * 0.40
-    + browUp  * 0.10
-    + (eyeOpen - 0.5) * 0.08
+    0.45
+    + smile    * 0.55
+    - netFrown * 0.45
   ));
 
   return { faceScore, jawActivity: jaw, angryScore, _smile: smile, _frown: mFrown, _brow: 0 };
@@ -752,37 +798,41 @@ const SMOOTH_UP = 0.07;   // slower to charge
 const SMOOTH_DOWN = 0.14; // faster to drain
 
 function updateState(state, poseLm, faceBlends) {
-  const rawPosture  = computePostureScore(poseLm);
+  const { postureScore: rawPosture, crossedArms: rawCrossed } = computePostureScore(poseLm);
   const { faceScore: rawFace, jawActivity, angryScore: rawAngry,
           _smile, _frown, _brow } = computeFaceScore(faceBlends);
   state._smile = _smile || 0; state._frown = _frown || 0; state._brow = _brow || 0;
   const rawMovement = computeMovementScore(poseLm, state.prev);
 
-  state.posture  = state.posture  * 0.90 + rawPosture  * 0.10;
-  state.face     = state.face     * 0.90 + rawFace     * 0.10;
-  state.movement = state.movement * 0.88 + rawMovement * 0.12;
+  state.posture     = state.posture     * 0.90 + rawPosture  * 0.10;
+  state.face        = state.face        * 0.90 + rawFace     * 0.10;
+  state.movement    = state.movement    * 0.88 + rawMovement * 0.12;
+  // Crossed arms: slow to build, slow to release (sustained posture signal)
+  state.crossedArms = (state.crossedArms || 0) * 0.93 + rawCrossed  * 0.07;
 
-  // Jaw: fast accumulation, slow decay — sustained talking builds up quickly
+  // Jaw: fast accumulation, slow decay
   state.jawActivity = state.jawActivity * 0.88 + jawActivity * 0.12;
-  // Anger: needs to be held to trigger, fades quickly when released
+  // Anger: needs sustained frown to trigger, fades quickly when released
   state.angryScore  = state.angryScore  * 0.85 + rawAngry    * 0.15;
 
   // ── Battery formula ──────────────────────────────────────────────────────
-  let raw = state.posture * 0.22 + state.face * 0.35 + state.movement * 0.28;
+  let raw = state.posture * 0.20 + state.face * 0.32 + state.movement * 0.28;
 
-  // Smile directly lifts battery — bypasses jaw drain so smiling while talking still counts
-  raw += state._smile * 0.18;
+  // Smile is a direct battery lift — always positive, no way to reduce it
+  raw += state._smile * 0.22;
 
   // Frantic / dancing → Energized bonus
   if (state.movement > 0.60) raw += (state.movement - 0.60) * 0.50;
 
-  // Talking drain
-  raw -= state.jawActivity * 0.35;
+  // Talking drain (reduced if smiling — engaged conversation is fine)
+  const talkDrain = state.jawActivity * Math.max(0.2, 1 - state._smile * 1.2);
+  raw -= talkDrain * 0.28;
 
-  // Angry override: lerp hard toward floor (0.05)
-  if (state.angryScore > 0.20) {
-    const pull = Math.min((state.angryScore - 0.20) / 0.30, 1.0);
-    raw = raw * (1 - pull * 0.90) + 0.04 * (pull * 0.90);
+  // Needs Space: sustained frown OR crossed arms → pull battery toward floor
+  const needsSpaceDrive = Math.max(state.angryScore, state.crossedArms);
+  if (needsSpaceDrive > 0.22) {
+    const pull = Math.min((needsSpaceDrive - 0.22) / 0.28, 1.0);
+    raw = raw * (1 - pull * 0.88) + 0.04 * (pull * 0.88);
   }
 
   raw = Math.min(Math.max(raw, 0), 1.0);
@@ -790,9 +840,9 @@ function updateState(state, poseLm, faceBlends) {
   const s = raw < state.battery ? SMOOTH_DOWN : SMOOTH_UP;
   state.battery   = state.battery * (1 - s) + raw * s;
 
-  state.isTalking = state.jawActivity > 0.22;
-  state.isAngry   = state.angryScore  > 0.25;
-  state.prev      = poseLm.map(l => ({ ...l }));
+  state.isTalking  = state.jawActivity  > 0.22;
+  state.isAngry    = needsSpaceDrive    > 0.25;
+  state.prev       = poseLm.map(l => ({ ...l }));
   return state;
 }
 
@@ -919,69 +969,53 @@ function getCurrentMsg(state, battery, now) {
   return state.currentMsg;
 }
 
-function wrapText(text, maxWidth) {
-  const words = text.split(' ');
-  const lines = [];
-  let line = '';
-  for (const word of words) {
-    const test = line ? line + ' ' + word : word;
-    if (ctx.measureText(test).width > maxWidth && line) {
-      lines.push(line);
-      line = word;
-    } else {
-      line = test;
-    }
-  }
-  if (line) lines.push(line);
-  return lines;
+
+// ── Toast notification system ─────────────────────────────────────────────────
+const toastStack  = document.getElementById('toast-stack');
+let   lastToastMsg = '';
+let   toastTimeout = null;
+
+const LEVEL_LABELS = {
+  energized:  'Energized',
+  present:    'Present',
+  engaged:    'Engaged',
+  fading:     'Fading',
+  needsSpace: 'Needs Space',
+};
+
+function showToast(msg, levelLabel, levelColor) {
+  if (msg === lastToastMsg) return;   // don't repeat the same tip back-to-back
+  lastToastMsg = msg;
+
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.innerHTML = `<div class="toast-label" style="color:${levelColor}">${levelLabel}</div>${msg}`;
+  toastStack.appendChild(el);
+
+  // Slide in
+  requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add('in')));
+
+  // Slide out after 5 s, then remove
+  const hide = () => {
+    el.classList.remove('in');
+    el.classList.add('out');
+    el.addEventListener('transitionend', () => el.remove(), { once: true });
+  };
+  toastTimeout = setTimeout(hide, 5000);
 }
 
-function drawCommentary(x, y, state, battery, now) {
+// Called from the render loop with the first detected person's state
+function updateToast(state, battery, now) {
   const msg = getCurrentMsg(state, battery, now);
   if (!msg) return;
-
-  // Fade in/out within each interval
-  const elapsed = now - state.msgTimer;
-  const fadeIn  = Math.min(elapsed / 600, 1);
-  const alpha   = fadeIn * (elapsed > 4500 ? Math.max(0, 1 - (elapsed - 4500) / 500) : 1);
-
   const lvl = levelFor(battery);
-
-  ctx.save();
-  ctx.globalAlpha = Math.max(0, Math.min(alpha, 1));
-  ctx.font = '500 12px Space Mono, monospace';
-
-  // Constrain pill width to screen with margin
-  const maxPillW = Math.min(W - 32, 300);
-  const lines    = wrapText(msg, maxPillW - 24);
-  const lineH    = 18;
-  const pw       = Math.min(Math.max(...lines.map(l => ctx.measureText(l).width)) + 24, maxPillW);
-  const ph       = lines.length * lineH + 14;
-
-  // Keep pill horizontally within canvas
-  let px = x - pw / 2;
-  if (px < 8) px = 8;
-  if (px + pw > W - 8) px = W - 8 - pw;
-  const py = y;
-
-  // Background
-  ctx.beginPath();
-  ctx.roundRect(px, py, pw, ph, 4);
-  ctx.fillStyle = 'rgba(3,13,18,0.80)';
-  ctx.fill();
-  ctx.strokeStyle = lvl.color + '66';
-  ctx.lineWidth = 1;
-  ctx.stroke();
-
-  // Text lines
-  ctx.fillStyle = '#b8ede8';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  const textX = px + pw / 2;
-  lines.forEach((line, i) => {
-    ctx.fillText(line, textX, py + 7 + lineH * i + lineH / 2);
-  });
-  ctx.restore();
+  // Map battery level to a label key
+  let key = 'needsSpace';
+  if (battery >= 0.80) key = 'energized';
+  else if (battery >= 0.60) key = 'present';
+  else if (battery >= 0.40) key = 'engaged';
+  else if (battery >= 0.20) key = 'fading';
+  showToast(msg, LEVEL_LABELS[key], lvl.color);
 }
 
 // ── Face label helpers ────────────────────────────────────────────────────────
@@ -1396,7 +1430,8 @@ function detect() {
 
     drawHalo(nosePt.x, haloY, headW * 0.60, lvl.color, lvl.glow, floatOff);
     drawBatteryIndicator(nosePt.x, clusterBottom, battery, state);
-    drawCommentary(nosePt.x, clusterBottom + 90, state, battery, now);
+    // Toast is DOM-based; only drive it from the first detected person
+    if (i === 0) updateToast(state, battery, now);
     // Face signal labels (only when face model is loaded)
     if (faceLandmarksList[i]) {
       drawFaceLabels(faceLandmarksList[i], faceBlendshapes[i] ? [faceBlendshapes[i]] : null, map);
