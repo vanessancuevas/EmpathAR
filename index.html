@@ -421,20 +421,25 @@ function computeFaceScore(blendshapes) {
     ((bs.mouthLowerDownLeft || 0) + (bs.mouthLowerDownRight || 0)) / 2 * 0.5,
     (bs.mouthPressLeft || 0 + (bs.mouthPressRight || 0)) / 2 * 0.4
   );
-  const rawBrowDown = ((bs.browDownLeft    || 0) + (bs.browDownRight    || 0)) / 2;
-  const rawBrowUp   = ((bs.browOuterUpLeft || 0) + (bs.browOuterUpRight || 0)
-                    +  (bs.browInnerUp     || 0)) / 3;
-  const rawEyeBlink = ((bs.eyeBlinkLeft   || 0) + (bs.eyeBlinkRight    || 0)) / 2;
-  const jaw         =   bs.jawOpen        || 0;
+  const rawBrowDown  = ((bs.browDownLeft    || 0) + (bs.browDownRight    || 0)) / 2;
+  const rawNoseSneer = ((bs.noseSneerLeft   || 0) + (bs.noseSneerRight   || 0)) / 2;
+  const rawBrowUp    = ((bs.browOuterUpLeft || 0) + (bs.browOuterUpRight || 0)
+                     +  (bs.browInnerUp     || 0)) / 3;
+  const rawEyeBlink  = ((bs.eyeBlinkLeft   || 0) + (bs.eyeBlinkRight    || 0)) / 2;
+  const jaw          =   bs.jawOpen        || 0;
 
   // Amplify — values are naturally tiny; scale to a usable 0–1 range
   const smile    = Math.min(rawSmile    * 4.0, 1);
   const mFrown   = Math.min(rawFrown    * 9.0, 1);
-  const browDown = Math.min(rawBrowDown * 3.5, 1);
   const browUp   = Math.min(rawBrowUp   * 3.0, 1);
   const eyeOpen  = 1 - Math.min(rawEyeBlink * 3.0, 1);
 
-  // Angry: both brow tension AND frown must be elevated together
+  // Tension: requires active muscle effort — browDown AND/OR noseSneer (wrinkle signal)
+  // Deadzone of 0.06 so resting brow position never registers
+  const rawTension = rawBrowDown * 0.55 + rawNoseSneer * 0.45;
+  const browDown   = Math.min(Math.max(rawTension - 0.06, 0) / 0.94 * 2.5, 1);
+
+  // Angry: brow tension AND frown together
   const angryScore = Math.min(browDown, 1) * Math.min(mFrown, 1);
 
   const faceScore = Math.max(0, Math.min(1,
@@ -711,7 +716,9 @@ function drawFaceLabels(faceLm, blendshapes, map) {
   }
 
   // Use same amplification as computeFaceScore so labels match battery behavior
-  const browDown  = Math.min(((bs.browDownLeft   || 0) + (bs.browDownRight  || 0)) / 2 * 3.5, 1);
+  const rawTensionL = ((bs.browDownLeft  || 0) + (bs.browDownRight  || 0)) / 2 * 0.55
+                    + ((bs.noseSneerLeft || 0) + (bs.noseSneerRight || 0)) / 2 * 0.45;
+  const browDown  = Math.min(Math.max(rawTensionL - 0.06, 0) / 0.94 * 2.5, 1);
   const smile     = Math.min(((bs.mouthSmileLeft || 0) + (bs.mouthSmileRight|| 0)) / 2 * 4.0, 1);
   const mFrown    = Math.min(((bs.mouthFrownLeft || 0) + (bs.mouthFrownRight|| 0)) / 2 * 9.0, 1);
   const jawOpen   =   bs.jawOpen        || 0;
