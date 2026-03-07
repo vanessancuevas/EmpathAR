@@ -29,6 +29,13 @@
       height: 100dvh;
       font-family: var(--font-m);
       color: var(--text);
+      overflow-x: hidden;
+    }
+
+    /* Prevent any text from bleeding out of its container */
+    p, div, span, h1, h2, h3 {
+      overflow-wrap: break-word;
+      word-break: break-word;
     }
 
     #cam {
@@ -124,8 +131,10 @@
       align-items: center;
       justify-content: center;
       gap: 0;
-      padding: 24px 24px 0;
+      padding: 16px 16px 0;
       position: relative; z-index: 1;
+      width: 100%;
+      overflow-x: hidden;
     }
 
     /* Title panel */
@@ -134,7 +143,7 @@
       max-width: 360px;
       background: var(--accent-lo);
       border: 1px solid var(--accent-bd);
-      padding: 24px 24px 20px;
+      padding: 20px 16px 16px;
       text-align: center;
       margin-bottom: 12px;
     }
@@ -192,6 +201,7 @@
       width: 100%;
       max-width: 360px;
       margin-bottom: 16px;
+      min-width: 0;
     }
 
     .feat-panel {
@@ -909,6 +919,23 @@ function getCurrentMsg(state, battery, now) {
   return state.currentMsg;
 }
 
+function wrapText(text, maxWidth) {
+  const words = text.split(' ');
+  const lines = [];
+  let line = '';
+  for (const word of words) {
+    const test = line ? line + ' ' + word : word;
+    if (ctx.measureText(test).width > maxWidth && line) {
+      lines.push(line);
+      line = word;
+    } else {
+      line = test;
+    }
+  }
+  if (line) lines.push(line);
+  return lines;
+}
+
 function drawCommentary(x, y, state, battery, now) {
   const msg = getCurrentMsg(state, battery, now);
   if (!msg) return;
@@ -916,7 +943,6 @@ function drawCommentary(x, y, state, battery, now) {
   // Fade in/out within each interval
   const elapsed = now - state.msgTimer;
   const fadeIn  = Math.min(elapsed / 600, 1);
-  const fadeOut = elapsed > MESSAGES && elapsed > 4500 ? Math.max(0, 1 - (elapsed - 4500) / 500) : 1;
   const alpha   = fadeIn * (elapsed > 4500 ? Math.max(0, 1 - (elapsed - 4500) / 500) : 1);
 
   const lvl = levelFor(battery);
@@ -924,24 +950,37 @@ function drawCommentary(x, y, state, battery, now) {
   ctx.save();
   ctx.globalAlpha = Math.max(0, Math.min(alpha, 1));
   ctx.font = '500 12px Space Mono, monospace';
-  const tw = ctx.measureText(msg).width;
-  const pw = tw + 24, ph = 26;
-  const px = x - pw / 2, py = y;
 
-  // Pill background
+  // Constrain pill width to screen with margin
+  const maxPillW = Math.min(W - 32, 300);
+  const lines    = wrapText(msg, maxPillW - 24);
+  const lineH    = 18;
+  const pw       = Math.min(Math.max(...lines.map(l => ctx.measureText(l).width)) + 24, maxPillW);
+  const ph       = lines.length * lineH + 14;
+
+  // Keep pill horizontally within canvas
+  let px = x - pw / 2;
+  if (px < 8) px = 8;
+  if (px + pw > W - 8) px = W - 8 - pw;
+  const py = y;
+
+  // Background
   ctx.beginPath();
-  ctx.roundRect(px, py, pw, ph, ph / 2);
-  ctx.fillStyle = 'rgba(0,0,0,0.58)';
+  ctx.roundRect(px, py, pw, ph, 4);
+  ctx.fillStyle = 'rgba(3,13,18,0.80)';
   ctx.fill();
-  ctx.strokeStyle = lvl.color + '55';
+  ctx.strokeStyle = lvl.color + '66';
   ctx.lineWidth = 1;
   ctx.stroke();
 
-  // Text
-  ctx.fillStyle = '#e2e8f0';
+  // Text lines
+  ctx.fillStyle = '#b8ede8';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText(msg, x, py + ph / 2);
+  const textX = px + pw / 2;
+  lines.forEach((line, i) => {
+    ctx.fillText(line, textX, py + 7 + lineH * i + lineH / 2);
+  });
   ctx.restore();
 }
 
