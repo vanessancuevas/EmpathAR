@@ -493,6 +493,51 @@
     }
 
     /* ── Toast notifications ── */
+    /* ── Legend accordion (mobile only) ── */
+    #legend-toggle {
+      display: none;
+    }
+    @media (max-width: 768px) {
+      #legend-toggle {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        width: 100%;
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 0;
+        color: var(--accent);
+        font-family: var(--font-m);
+        font-size: 0.52rem;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+      }
+      #legend-toggle-icon {
+        font-size: 0.7rem;
+        transition: transform 0.2s;
+        color: var(--accent);
+      }
+      #legend.collapsed #legend-toggle-icon {
+        transform: rotate(-90deg);
+      }
+      .legend-title {
+        display: none; /* replaced by button on mobile */
+      }
+      #legend-rows {
+        overflow: hidden;
+        max-height: 200px;
+        transition: max-height 0.25s ease, opacity 0.2s ease;
+        opacity: 1;
+        margin-top: 6px;
+      }
+      #legend.collapsed #legend-rows {
+        max-height: 0;
+        opacity: 0;
+      }
+    }
+
+    /* ── Toast notifications ── */
     #toast-stack {
       position: fixed;
       bottom: 80px;
@@ -503,24 +548,27 @@
       gap: 8px;
       align-items: flex-end;
       pointer-events: none;
-      max-width: min(320px, calc(100vw - 32px));
+      max-width: min(300px, calc(100vw - 32px));
     }
 
     .toast {
-      background: rgba(3,13,18,0.90);
+      background: rgba(3,13,18,0.92);
       backdrop-filter: blur(10px);
       border: 1px solid var(--accent-bd);
       border-left: 3px solid var(--accent);
-      padding: 10px 14px;
+      padding: 10px 12px 10px 14px;
       font-family: var(--font-m);
       font-size: 0.62rem;
       line-height: 1.55;
       color: var(--text);
       letter-spacing: 0.04em;
       max-width: 100%;
+      pointer-events: all;
       transform: translateX(120%);
       opacity: 0;
       transition: transform 0.35s cubic-bezier(0.22,1,0.36,1), opacity 0.35s ease;
+      touch-action: pan-x;
+      user-select: none;
     }
 
     .toast.in {
@@ -531,6 +579,15 @@
     .toast.out {
       transform: translateX(120%);
       opacity: 0;
+      transition: transform 0.22s ease-in, opacity 0.22s ease-in;
+    }
+
+    .toast-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 4px;
+      gap: 8px;
     }
 
     .toast-label {
@@ -538,8 +595,20 @@
       letter-spacing: 0.18em;
       color: var(--accent);
       text-transform: uppercase;
-      margin-bottom: 4px;
     }
+
+    .toast-close {
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-size: 0.75rem;
+      line-height: 1;
+      cursor: pointer;
+      padding: 0 0 0 6px;
+      flex-shrink: 0;
+      font-family: monospace;
+    }
+    .toast-close:hover { color: var(--accent); }
   </style>
 </head>
 <body>
@@ -550,13 +619,19 @@
 <div id="hud">
   <div id="loading-bar-wrap"><div id="loading-bar"></div></div>
   <div id="status">Loading models…</div>
-  <div id="legend">
+  <div id="legend" class="collapsed">
     <div class="legend-title">Social Battery</div>
-    <div class="legend-row"><div class="legend-dot" style="background:#6ee7b7"></div>Energized (80–100%)</div>
-    <div class="legend-row"><div class="legend-dot" style="background:#60a5fa"></div>Present (60–79%)</div>
-    <div class="legend-row"><div class="legend-dot" style="background:#fbbf24"></div>Engaged (40–59%)</div>
-    <div class="legend-row"><div class="legend-dot" style="background:#f97316"></div>Fading (20–39%)</div>
-    <div class="legend-row"><div class="legend-dot" style="background:#a78bfa"></div>Needs Space (0–19%)</div>
+    <button id="legend-toggle">
+      Social Battery
+      <span id="legend-toggle-icon">▾</span>
+    </button>
+    <div id="legend-rows">
+      <div class="legend-row"><div class="legend-dot" style="background:#6ee7b7"></div>Energized (80–100%)</div>
+      <div class="legend-row"><div class="legend-dot" style="background:#60a5fa"></div>Present (60–79%)</div>
+      <div class="legend-row"><div class="legend-dot" style="background:#fbbf24"></div>Engaged (40–59%)</div>
+      <div class="legend-row"><div class="legend-dot" style="background:#f97316"></div>Fading (20–39%)</div>
+      <div class="legend-row"><div class="legend-dot" style="background:#a78bfa"></div>Needs Space (0–19%)</div>
+    </div>
   </div>
   <div id="toast-stack"></div>
   <button id="toggle-skeleton" class="hud-btn">Skeleton off</button>
@@ -986,7 +1061,6 @@ function levelKey(battery) {
 
 function dismissToast(entry) {
   if (!entry || !entry.el) return;
-  clearTimeout(entry.timer);
   const el = entry.el;
   entry.el = null;
   el.classList.remove('in');
@@ -994,8 +1068,32 @@ function dismissToast(entry) {
   el.addEventListener('transitionend', () => el.remove(), { once: true });
 }
 
+function addSwipeToDismiss(el, onDismiss) {
+  let startX = null, currentX = 0;
+  el.addEventListener('touchstart', e => {
+    startX = e.touches[0].clientX;
+  }, { passive: true });
+  el.addEventListener('touchmove', e => {
+    if (startX === null) return;
+    currentX = e.touches[0].clientX - startX;
+    if (currentX > 0) {
+      el.style.transform = `translateX(${currentX}px)`;
+      el.style.opacity = String(Math.max(0, 1 - currentX / 120));
+    }
+  }, { passive: true });
+  el.addEventListener('touchend', () => {
+    if (currentX > 60) {
+      onDismiss();
+    } else {
+      el.style.transform = '';
+      el.style.opacity = '';
+    }
+    startX = null; currentX = 0;
+  });
+}
+
 function showToast(idx, msg, battery) {
-  const entry = personToasts[idx] || (personToasts[idx] = { msg: '', el: null, timer: null });
+  const entry = personToasts[idx] || (personToasts[idx] = { msg: '', el: null });
 
   if (msg === entry.msg && entry.el) return;  // same tip still showing
   entry.msg = msg;
@@ -1010,13 +1108,20 @@ function showToast(idx, msg, battery) {
   const el = document.createElement('div');
   el.className = 'toast';
   el.innerHTML =
-    `<div class="toast-label" style="color:${lvl.color}">${pLabel} &nbsp;·&nbsp; ${lLabel}</div>${msg}`;
+    `<div class="toast-header">` +
+      `<div class="toast-label" style="color:${lvl.color}">${pLabel} &nbsp;·&nbsp; ${lLabel}</div>` +
+      `<button class="toast-close" aria-label="Dismiss">✕</button>` +
+    `</div>${msg}`;
   toastStack.appendChild(el);
   entry.el = el;
 
-  requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add('in')));
+  // X button
+  el.querySelector('.toast-close').addEventListener('click', () => dismissToast(entry));
 
-  entry.timer = setTimeout(() => dismissToast(entry), 6000);
+  // Swipe right to dismiss on mobile
+  addSwipeToDismiss(el, () => dismissToast(entry));
+
+  requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add('in')));
 }
 
 // Called from the render loop for every detected person
@@ -1535,6 +1640,11 @@ skelBtn.addEventListener('click', () => {
   showSkeleton = !showSkeleton;
   skelBtn.textContent = showSkeleton ? 'Skeleton on' : 'Skeleton off';
   skelBtn.classList.toggle('on', showSkeleton);
+});
+
+// Legend accordion (mobile only — button is hidden via CSS on desktop)
+document.getElementById('legend-toggle').addEventListener('click', () => {
+  document.getElementById('legend').classList.toggle('collapsed');
 });
 
 const debugPanel   = document.getElementById('debug-panel');
