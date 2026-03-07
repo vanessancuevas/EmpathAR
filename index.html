@@ -1591,7 +1591,6 @@ function detect() {
     const haloY    = headTopY + headW * 0.06;          // halo sits just above crown
     const clusterBottom = headTopY - 18 - floatOff;   // cluster floats above halo
 
-    drawHalo(nosePt.x, haloY, headW * 0.60, lvl.color, lvl.glow, floatOff);
     drawBatteryIndicator(nosePt.x, clusterBottom, battery, state);
     // Toast is DOM-based; one toast slot per person
     updateToast(i, state, battery, now);
