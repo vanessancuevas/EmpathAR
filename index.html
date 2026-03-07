@@ -277,7 +277,6 @@
     <div>Face model <span id="dbg-face-model">loading…</span></div>
     <div>Smile <span id="dbg-smile">—</span></div>
     <div>Frown <span id="dbg-frown">—</span></div>
-    <div>BrowDown <span id="dbg-brow">—</span></div>
     <div>JawOpen <span id="dbg-jaw">—</span></div>
     <div>Battery <span id="dbg-battery">—</span></div>
   </div>
@@ -421,37 +420,29 @@ function computeFaceScore(blendshapes) {
     ((bs.mouthLowerDownLeft || 0) + (bs.mouthLowerDownRight || 0)) / 2 * 0.5,
     (bs.mouthPressLeft || 0 + (bs.mouthPressRight || 0)) / 2 * 0.4
   );
-  const rawBrowDown  = ((bs.browDownLeft    || 0) + (bs.browDownRight    || 0)) / 2;
-  const rawNoseSneer = ((bs.noseSneerLeft   || 0) + (bs.noseSneerRight   || 0)) / 2;
-  const rawBrowUp    = ((bs.browOuterUpLeft || 0) + (bs.browOuterUpRight || 0)
-                     +  (bs.browInnerUp     || 0)) / 3;
-  const rawEyeBlink  = ((bs.eyeBlinkLeft   || 0) + (bs.eyeBlinkRight    || 0)) / 2;
-  const jaw          =   bs.jawOpen        || 0;
+  const rawBrowUp   = ((bs.browOuterUpLeft || 0) + (bs.browOuterUpRight || 0)
+                    +  (bs.browInnerUp     || 0)) / 3;
+  const rawEyeBlink = ((bs.eyeBlinkLeft   || 0) + (bs.eyeBlinkRight    || 0)) / 2;
+  const jaw         =   bs.jawOpen        || 0;
 
   // Amplify — values are naturally tiny; scale to a usable 0–1 range
-  const smile    = Math.min(rawSmile    * 4.0, 1);
-  const mFrown   = Math.min(rawFrown    * 9.0, 1);
-  const browUp   = Math.min(rawBrowUp   * 3.0, 1);
-  const eyeOpen  = 1 - Math.min(rawEyeBlink * 3.0, 1);
+  const smile   = Math.min(rawSmile * 4.0, 1);
+  const mFrown  = Math.min(rawFrown * 9.0, 1);
+  const browUp  = Math.min(rawBrowUp  * 3.0, 1);
+  const eyeOpen = 1 - Math.min(rawEyeBlink * 3.0, 1);
 
-  // Tension: browDown is primary, noseSneer (wrinkle) adds boost but isn't required
-  // Small deadzone (0.04) so resting brow doesn't register, then amplify
-  const rawTension = rawBrowDown + rawNoseSneer * 0.4;
-  const browDown   = Math.min(Math.max(rawTension - 0.04, 0) * 4.0, 1);
-
-  // Angry: brow tension AND frown together
-  const angryScore = Math.min(browDown, 1) * Math.min(mFrown, 1);
+  // Angry: strong frown alone triggers needs-space
+  const angryScore = Math.min(mFrown * 1.2, 1);
 
   const faceScore = Math.max(0, Math.min(1,
     0.50
-    + smile    * 0.40
-    - mFrown   * 0.35
-    - browDown * 0.30
-    + browUp   * 0.10
+    + smile   * 0.45
+    - mFrown  * 0.40
+    + browUp  * 0.10
     + (eyeOpen - 0.5) * 0.08
   ));
 
-  return { faceScore, jawActivity: jaw, angryScore, _smile: smile, _frown: mFrown, _brow: browDown };
+  return { faceScore, jawActivity: jaw, angryScore, _smile: smile, _frown: mFrown, _brow: 0 };
 }
 
 function computeMovementScore(curLm, prevLm) {
@@ -715,19 +706,9 @@ function drawFaceLabels(faceLm, blendshapes, map) {
     blendshapes[0].categories.forEach(c => { bs[c.categoryName] = c.score; });
   }
 
-  // Use same amplification as computeFaceScore so labels match battery behavior
-  const rawTensionL = ((bs.browDownLeft  || 0) + (bs.browDownRight  || 0)) / 2
-                    + ((bs.noseSneerLeft || 0) + (bs.noseSneerRight || 0)) / 2 * 0.4;
-  const browDown  = Math.min(Math.max(rawTensionL - 0.04, 0) * 4.0, 1);
-  const smile     = Math.min(((bs.mouthSmileLeft || 0) + (bs.mouthSmileRight|| 0)) / 2 * 4.0, 1);
-  const mFrown    = Math.min(((bs.mouthFrownLeft || 0) + (bs.mouthFrownRight|| 0)) / 2 * 9.0, 1);
-  const jawOpen   =   bs.jawOpen        || 0;
-
-  // ── Eyebrow region (between brows, label upper-left) ──
-  const browMid = midLm(faceLm, [105, 334]); // inner brow landmarks
-  const browPt  = lmToCanvas(browMid, map);
-  const browColor = lerpColor('#6ee7b7', '#f87171', browDown);
-  drawFaceCallout(browPt.x, browPt.y, -0.7, -0.72, 'Tension', browDown, browColor);
+  const smile   = Math.min(((bs.mouthSmileLeft || 0) + (bs.mouthSmileRight|| 0)) / 2 * 4.0, 1);
+  const mFrown  = Math.min(((bs.mouthFrownLeft || 0) + (bs.mouthFrownRight|| 0)) / 2 * 9.0, 1);
+  const jawOpen =   bs.jawOpen        || 0;
 
   // ── Right mouth corner → Smile (label right) ──
   const smilePt = lmToCanvas(faceLm[291], map);
@@ -1159,7 +1140,6 @@ const toggleDebug  = document.getElementById('toggle-debug');
 const dbgFaceModel = document.getElementById('dbg-face-model');
 const dbgSmile     = document.getElementById('dbg-smile');
 const dbgFrown     = document.getElementById('dbg-frown');
-const dbgBrow      = document.getElementById('dbg-brow');
 const dbgJaw       = document.getElementById('dbg-jaw');
 const dbgBattery   = document.getElementById('dbg-battery');
 let   showDebug    = false;
@@ -1176,12 +1156,10 @@ function updateDebugPanel(state) {
   const fmt = v => v != null ? (v * 100).toFixed(0) + '%' : '—';
   dbgSmile.textContent   = fmt(state?._smile);
   dbgFrown.textContent   = fmt(state?._frown);
-  dbgBrow.textContent    = fmt(state?._brow);
   dbgJaw.textContent     = fmt(state?.jawActivity);
   dbgBattery.textContent = fmt(state?.battery);
   dbgSmile.style.color   = state?._smile  > 0.2 ? '#6ee7b7' : '#94a3b8';
   dbgFrown.style.color   = state?._frown  > 0.2 ? '#f87171' : '#94a3b8';
-  dbgBrow.style.color    = state?._brow   > 0.2 ? '#f97316' : '#94a3b8';
   dbgJaw.style.color     = state?.jawActivity > 0.2 ? '#a78bfa' : '#94a3b8';
 }
 
