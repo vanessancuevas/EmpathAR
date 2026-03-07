@@ -495,13 +495,16 @@ function updateState(state, poseLm, faceBlends) {
   state.angryScore  = state.angryScore  * 0.85 + rawAngry    * 0.15;
 
   // ── Battery formula ──────────────────────────────────────────────────────
-  let raw = state.posture * 0.25 + state.face * 0.32 + state.movement * 0.30;
+  let raw = state.posture * 0.22 + state.face * 0.35 + state.movement * 0.28;
+
+  // Smile directly lifts battery — bypasses jaw drain so smiling while talking still counts
+  raw += state._smile * 0.18;
 
   // Frantic / dancing → Energized bonus
   if (state.movement > 0.60) raw += (state.movement - 0.60) * 0.50;
 
-  // Talking drain — aggressive: talking a lot tanks the battery noticeably
-  raw -= state.jawActivity * 0.42;
+  // Talking drain
+  raw -= state.jawActivity * 0.35;
 
   // Angry override: lerp hard toward floor (0.05)
   if (state.angryScore > 0.20) {
@@ -521,80 +524,124 @@ function updateState(state, poseLm, faceBlends) {
 }
 
 // ── Commentary messages ───────────────────────────────────────────────────────
+// Each level has two sets: talking (they're speaking) vs quiet (they're not)
 const MESSAGES = {
-  // They're doing great — celebrate and sustain it
-  energized: [
-    "They're glowing — match that energy",
-    "Great moment to go deeper with them",
-    "Tell them what you genuinely admire right now",
-    "Build on this — ask what's got them so lit up",
-  ],
-  // Good baseline — light nudge to connect
-  present: [
-    "Ask them something they're curious about lately",
-    "Share something you appreciate about them",
-    "Invite their take — they're ready to engage",
-    "A real question goes a long way right now",
-  ],
-  // Starting to dip — small gesture needed
-  engaged: [
-    "Try a genuine compliment — notice something specific",
-    "Ask about something they've been excited about",
-    "Give them the floor — open it up to them",
-    "Acknowledge something they did or said well",
-  ],
-  // Visibly fading — time to actively boost
-  fading: [
-    "Notice their style or vibe and say it out loud",
-    "Ask: 'What's been the best part of your week?'",
-    "A specific compliment right now could shift everything",
-    "Ask about something they're proud of",
-    "Try: 'You seem thoughtful — what's on your mind?'",
-  ],
-  // Low energy, possibly withdrawn — gentle and spacious
-  needsSpace: [
-    "They may not be looking up — give them a moment",
-    "Ease off the conversation — presence over words",
-    "Try: 'No rush, I'm here whenever you're ready'",
-    "Let the silence be okay — not every gap needs filling",
-    "A soft check-in: 'You seem a bit low — all good?'",
-  ],
-  // Talking a lot, draining themselves
-  talking: [
-    "Pause and invite them: 'What do you think?'",
-    "Let them respond — give their voice space",
-    "Ask a question and sit with their answer",
-  ],
-  // Frowning / visibly upset
-  angry: [
-    "They seem tense — try: 'Everything ok?'",
-    "Acknowledge it: 'You seem off — want to talk?'",
-    "A warm compliment might soften the moment",
-    "Give them room to say what's bothering them",
-  ],
-  // High movement / dancing
-  dancing: [
-    "They're in their element — celebrate with them",
-    "Match this energy — this is a great moment",
-    "Hype them up, they're feeling it",
-  ],
+  energized: {
+    talking: [
+      "They're lit up — ask: 'What's fueling this for you?'",
+      "Go deeper: 'How did you get into that?'",
+      "Keep it going: 'What's the most exciting part?'",
+      "Ask: 'Who else should I talk to about this?'",
+    ],
+    quiet: [
+      "They're glowing — tell them you notice it",
+      "Great energy right now — match it and build on it",
+      "Ask: 'What's been making you happy lately?'",
+      "Tell them something you genuinely admire about them",
+    ],
+  },
+  present: {
+    talking: [
+      "They're engaged — ask: 'What do you think the next step is?'",
+      "Build on it: 'That's interesting — tell me more'",
+      "Try: 'How long have you been thinking about this?'",
+      "Ask: 'What would you do differently if you could?'",
+    ],
+    quiet: [
+      "Ask them something they've been curious about",
+      "Try: 'What's something you've been looking forward to?'",
+      "Invite their opinion: 'What's your take on this?'",
+      "Share something and ask what they think",
+    ],
+  },
+  engaged: {
+    talking: [
+      "Keep it alive: 'What's the hardest part of that?'",
+      "Ask: 'What got you started on this?'",
+      "Try: 'Is there anyone who changed how you see this?'",
+      "Go personal: 'How does that connect to you?'",
+    ],
+    quiet: [
+      "Try a compliment — notice something specific about them",
+      "Ask: 'What's been on your mind lately?'",
+      "Open it up: 'What are you working on these days?'",
+      "Acknowledge something they did or said well recently",
+    ],
+  },
+  fading: {
+    talking: [
+      "Shift gears: 'What's something totally different you love?'",
+      "Try: 'Forget work for a sec — what excites you right now?'",
+      "Ask about something light: 'Any good recommendations lately?'",
+      "Try: 'What's been a highlight for you this week?'",
+    ],
+    quiet: [
+      "Notice their style or vibe — say it out loud",
+      "Try: 'What's been the best part of your week?'",
+      "A genuine compliment right now could shift everything",
+      "Ask: 'What are you looking forward to?'",
+      "Try: 'You seem thoughtful — what's on your mind?'",
+    ],
+  },
+  needsSpace: {
+    talking: [
+      "They're running low — ease the pace a little",
+      "Slow it down: 'No rush, take your time'",
+      "Ask something simple: 'What would make today better?'",
+      "Try: 'Want to just chill for a bit?'",
+    ],
+    quiet: [
+      "They may not be looking up — give them a moment",
+      "Let the silence be okay — not every gap needs filling",
+      "Try softly: 'No rush, I'm here whenever'",
+      "A gentle check-in: 'You seem a bit low — all good?'",
+      "Ease up — presence over words right now",
+    ],
+  },
+  angry: {
+    talking: [
+      "Let them vent — don't interrupt, just listen",
+      "Acknowledge it: 'That sounds really frustrating'",
+      "Try: 'I hear you — what would help most right now?'",
+      "Validate before solving: 'That makes total sense'",
+    ],
+    quiet: [
+      "They seem tense — try: 'Everything ok?'",
+      "A warm compliment might soften the moment",
+      "Gently: 'You seem a bit off — want to talk about it?'",
+      "Give them room — don't push, just be present",
+    ],
+  },
+  dancing: {
+    talking: [
+      "They're on fire — keep hyping them up",
+      "Ask: 'Where does this energy come from?'",
+      "Match it: 'I love this — tell me everything'",
+    ],
+    quiet: [
+      "They're in their element — celebrate with them",
+      "Match this energy — this is a great moment",
+      "Say something — they'll love the hype right now",
+    ],
+  },
 };
 
 function pickMsg(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 
 function getCurrentMsg(state, battery, now) {
-  const INTERVAL = 5500;
+  const INTERVAL = 6000;
   if (!state.msgTimer || now - state.msgTimer > INTERVAL) {
     state.msgTimer = now;
-    // Priority order
-    if (state.isAngry)                            state.currentMsg = pickMsg(MESSAGES.angry);
-    else if (state.movement > 0.78 && battery > 0.65) state.currentMsg = pickMsg(MESSAGES.dancing);
-    else if (state.isTalking && battery < 0.55)   state.currentMsg = pickMsg(MESSAGES.talking);
-    else if (battery >= 0.80) state.currentMsg = pickMsg(MESSAGES.energized);
-    else if (battery >= 0.60) state.currentMsg = pickMsg(MESSAGES.present);
-    else if (battery >= 0.40) state.currentMsg = pickMsg(MESSAGES.engaged);
-    else if (battery >= 0.20) state.currentMsg = pickMsg(MESSAGES.fading);
-    else                      state.currentMsg = pickMsg(MESSAGES.needsSpace);
+    const t = state.isTalking ? 'talking' : 'quiet';
+    let bucket;
+    if      (state.isAngry)                          bucket = MESSAGES.angry;
+    else if (state.movement > 0.78 && battery > 0.65) bucket = MESSAGES.dancing;
+    else if (battery >= 0.80) bucket = MESSAGES.energized;
+    else if (battery >= 0.60) bucket = MESSAGES.present;
+    else if (battery >= 0.40) bucket = MESSAGES.engaged;
+    else if (battery >= 0.20) bucket = MESSAGES.fading;
+    else                      bucket = MESSAGES.needsSpace;
+    state.currentMsg = pickMsg(bucket[t]);
   }
   return state.currentMsg;
 }
