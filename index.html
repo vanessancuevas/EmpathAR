@@ -1392,9 +1392,9 @@ function drawFaceLabels(pts, blendshapes) {
   const mFrown  = Math.min(((bs.mouthFrownLeft || 0) + (bs.mouthFrownRight|| 0)) / 2 * 9.0, 1);
   const jawOpen =   bs.jawOpen || 0;
 
-  drawFaceCallout(pts.smileX, pts.smileY,  1,  0, 'Smile',   smile,   lerpColor('#64748b', '#6ee7b7', smile));
-  drawFaceCallout(pts.frownX, pts.frownY, -1,  0, 'Frown',   mFrown,  lerpColor('#64748b', '#f87171', mFrown));
-  drawFaceCallout(pts.chinX,  pts.chinY,   0,  1, 'Talking', jawOpen, lerpColor('#64748b', '#a78bfa', jawOpen));
+  drawFaceCallout(pts.fSmileX, pts.fSmileY,  1,  0, 'Smile',   smile,   lerpColor('#64748b', '#6ee7b7', smile));
+  drawFaceCallout(pts.fFrownX, pts.fFrownY, -1,  0, 'Frown',   mFrown,  lerpColor('#64748b', '#f87171', mFrown));
+  drawFaceCallout(pts.fChinX,  pts.fChinY,   0,  1, 'Talking', jawOpen, lerpColor('#64748b', '#a78bfa', jawOpen));
 }
 
 // ── Drawing ───────────────────────────────────────────────────────────────────
