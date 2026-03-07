@@ -1,0 +1,1212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>Social Battery AR</title>
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: #000;
+      overflow: hidden;
+      width: 100vw;
+      height: 100dvh;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+
+    #cam {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      z-index: 0;
+    }
+
+    #overlay {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+      pointer-events: none;
+    }
+
+    /* ── Landing ── */
+    #landing {
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(ellipse at 50% 60%, #1a0a2e 0%, #000 100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 18px;
+      z-index: 20;
+      padding: 40px 32px;
+      text-align: center;
+    }
+
+    .logo {
+      width: 72px;
+      height: 72px;
+      border-radius: 24px;
+      background: linear-gradient(135deg, #7c3aed, #2563eb);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2rem;
+      margin-bottom: 4px;
+      box-shadow: 0 8px 32px rgba(124,58,237,0.5);
+    }
+
+    #landing h1 {
+      font-size: clamp(1.6rem, 6vw, 2.2rem);
+      font-weight: 700;
+      color: #fff;
+      letter-spacing: -0.02em;
+      line-height: 1.2;
+    }
+
+    #landing h1 span {
+      background: linear-gradient(135deg, #a78bfa, #60a5fa);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    #landing p {
+      color: #94a3b8;
+      font-size: 0.93rem;
+      line-height: 1.65;
+      max-width: 320px;
+    }
+
+    .features {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      width: 100%;
+      max-width: 300px;
+    }
+
+    .feature {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 14px;
+      padding: 10px 14px;
+      text-align: left;
+    }
+
+    .feature-icon { font-size: 1.2rem; flex-shrink: 0; }
+    .feature-text { font-size: 0.82rem; color: #94a3b8; line-height: 1.4; }
+    .feature-text strong { color: #e2e8f0; display: block; font-size: 0.85rem; }
+
+    #start-btn {
+      padding: 15px 44px;
+      background: linear-gradient(135deg, #7c3aed, #2563eb);
+      border: none;
+      border-radius: 50px;
+      color: #fff;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 4px 28px rgba(124,58,237,0.5);
+      letter-spacing: 0.01em;
+      margin-top: 4px;
+    }
+
+    #error-msg {
+      color: #f87171;
+      font-size: 0.83rem;
+      min-height: 1.2em;
+    }
+
+    /* ── HUD ── */
+    #hud {
+      position: fixed;
+      inset: 0;
+      z-index: 2;
+      pointer-events: none;
+      display: none;
+    }
+
+    #hud.active { display: block; }
+
+    #loading-bar-wrap {
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      background: rgba(255,255,255,0.08);
+    }
+
+    #loading-bar {
+      height: 100%;
+      background: linear-gradient(90deg, #7c3aed, #60a5fa);
+      width: 0%;
+      transition: width 0.3s;
+    }
+
+    #status {
+      position: absolute;
+      top: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.55);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 20px;
+      padding: 7px 16px;
+      font-size: 0.78rem;
+      color: #94a3b8;
+      white-space: nowrap;
+    }
+
+    #legend {
+      position: absolute;
+      bottom: 28px;
+      left: 16px;
+      background: rgba(0,0,0,0.55);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 14px;
+      padding: 10px 14px;
+      pointer-events: all;
+    }
+
+    .legend-title {
+      font-size: 0.68rem;
+      color: rgba(255,255,255,0.4);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 6px;
+    }
+
+    .legend-row {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      margin-bottom: 4px;
+      font-size: 0.75rem;
+      color: #cbd5e1;
+    }
+
+    .legend-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    #toggle-skeleton {
+      position: absolute;
+      bottom: 28px;
+      right: 16px;
+      background: rgba(0,0,0,0.55);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255,255,255,0.15);
+      color: rgba(255,255,255,0.6);
+      border-radius: 20px;
+      padding: 7px 14px;
+      font-size: 0.75rem;
+      cursor: pointer;
+      pointer-events: all;
+    }
+
+    #toggle-skeleton.on { color: #a78bfa; border-color: rgba(167,139,250,0.4); }
+
+  #debug-panel {
+    position: absolute;
+    top: 56px;
+    right: 16px;
+    background: rgba(0,0,0,0.72);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 10px;
+    padding: 8px 12px;
+    font-size: 10px;
+    font-family: monospace;
+    color: #94a3b8;
+    line-height: 1.7;
+    display: none;
+    min-width: 140px;
+  }
+  #debug-panel.visible { display: block; }
+  #debug-panel span { float: right; margin-left: 12px; font-weight: 600; }
+  #toggle-debug {
+    position: absolute;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0,0,0,0.55);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255,255,255,0.1);
+    color: rgba(255,255,255,0.5);
+    border-radius: 20px;
+    padding: 5px 12px;
+    font-size: 0.7rem;
+    cursor: pointer;
+    pointer-events: all;
+    white-space: nowrap;
+  }
+  </style>
+</head>
+<body>
+
+<video id="cam" autoplay playsinline muted></video>
+<canvas id="overlay"></canvas>
+
+<div id="hud">
+  <div id="loading-bar-wrap"><div id="loading-bar"></div></div>
+  <div id="status">Loading models…</div>
+  <div id="legend">
+    <div class="legend-title">Social Battery</div>
+    <div class="legend-row"><div class="legend-dot" style="background:#6ee7b7"></div>Energized (80–100%)</div>
+    <div class="legend-row"><div class="legend-dot" style="background:#60a5fa"></div>Present (60–79%)</div>
+    <div class="legend-row"><div class="legend-dot" style="background:#fbbf24"></div>Engaged (40–59%)</div>
+    <div class="legend-row"><div class="legend-dot" style="background:#f97316"></div>Fading (20–39%)</div>
+    <div class="legend-row"><div class="legend-dot" style="background:#a78bfa"></div>Needs Space (0–19%)</div>
+  </div>
+  <button id="toggle-skeleton">Skeleton off</button>
+  <button id="toggle-debug">Debug signals</button>
+  <div id="debug-panel">
+    <div>Face model <span id="dbg-face-model">loading…</span></div>
+    <div>Smile <span id="dbg-smile">—</span></div>
+    <div>Frown <span id="dbg-frown">—</span></div>
+    <div>BrowDown <span id="dbg-brow">—</span></div>
+    <div>JawOpen <span id="dbg-jaw">—</span></div>
+    <div>Battery <span id="dbg-battery">—</span></div>
+  </div>
+</div>
+
+<div id="landing">
+  <div class="logo">🔋</div>
+  <h1>Social<br/><span>Battery AR</span></h1>
+  <p>Point your camera at someone. We read body language signals in real time and display their social energy level as an AR overlay.</p>
+  <div class="features">
+    <div class="feature">
+      <div class="feature-icon">🧍</div>
+      <div class="feature-text">
+        <strong>Posture analysis</strong>
+        Open vs closed body language
+      </div>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">😊</div>
+      <div class="feature-text">
+        <strong>Expression reading</strong>
+        Smile, brow tension, eye openness
+      </div>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">🔋</div>
+      <div class="feature-text">
+        <strong>Live battery score</strong>
+        Smoothed social energy level
+      </div>
+    </div>
+  </div>
+  <button id="start-btn">Start Camera</button>
+  <p id="error-msg"></p>
+</div>
+
+<script type="module">
+import { PoseLandmarker, FaceLandmarker, FilesetResolver }
+  from 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14';
+
+// ── Elements ─────────────────────────────────────────────────────────────────
+const cam       = document.getElementById('cam');
+const canvas    = document.getElementById('overlay');
+const ctx       = canvas.getContext('2d');
+const landing   = document.getElementById('landing');
+const hud       = document.getElementById('hud');
+const statusEl  = document.getElementById('status');
+const loadBar   = document.getElementById('loading-bar');
+const errEl     = document.getElementById('error-msg');
+const skelBtn   = document.getElementById('toggle-skeleton');
+
+// ── Config ────────────────────────────────────────────────────────────────────
+let W = window.innerWidth, H = window.innerHeight;
+let showSkeleton = false;
+let poseLandmarker = null, faceLandmarker = null;
+let modelsReady = 0;
+
+// Per-person smoothed state (keyed by detection index)
+const personStates = {};
+
+// Battery level → visual config
+const LEVELS = [
+  { min: 0.80, color: '#6ee7b7', glow: '#34d399', label: '✦ Energized'   },
+  { min: 0.60, color: '#60a5fa', glow: '#3b82f6', label: '● Present'     },
+  { min: 0.40, color: '#fbbf24', glow: '#f59e0b', label: '◐ Engaged'     },
+  { min: 0.20, color: '#f97316', glow: '#ea580c', label: '○ Fading'      },
+  { min: 0.00, color: '#a78bfa', glow: '#7c3aed', label: '↓ Needs Space' },
+];
+
+function levelFor(pct) {
+  return LEVELS.find(l => pct >= l.min) || LEVELS[LEVELS.length - 1];
+}
+
+// ── Resize ────────────────────────────────────────────────────────────────────
+function resize() {
+  W = window.innerWidth; H = window.innerHeight;
+  canvas.width = W; canvas.height = H;
+}
+window.addEventListener('resize', resize);
+resize();
+
+// ── Video → canvas coordinate mapping ────────────────────────────────────────
+// MediaPipe normalizes to video dimensions; video is CSS object-fit:cover
+function getVideoMapping() {
+  const vw = cam.videoWidth  || W;
+  const vh = cam.videoHeight || H;
+  const vAspect = vw / vh;
+  const cAspect = W / H;
+  let scaleX, scaleY, offX = 0, offY = 0;
+  if (vAspect > cAspect) {
+    scaleY = H; scaleX = H * vAspect;
+    offX = (W - scaleX) / 2;
+  } else {
+    scaleX = W; scaleY = W / vAspect;
+    offY = (H - scaleY) / 2;
+  }
+  return { scaleX, scaleY, offX, offY };
+}
+
+function lmToCanvas(lm, map) {
+  return { x: lm.x * map.scaleX + map.offX, y: lm.y * map.scaleY + map.offY };
+}
+
+// ── Signal computation ────────────────────────────────────────────────────────
+
+function computePostureScore(lm) {
+  // Openness: wrist spread vs shoulder width
+  const shoulderW = Math.abs(lm[11].x - lm[12].x) + 0.001;
+  const wristSpread = Math.abs(lm[15].x - lm[16].x);
+  const openness = Math.min(wristSpread / (shoulderW * 1.6), 1.0);
+
+  // Uprightness: head well above shoulders
+  const noseY    = lm[0].y;
+  const shoulderY = (lm[11].y + lm[12].y) / 2;
+  const hipY      = (lm[23].y + lm[24].y) / 2;
+  const bodyH     = Math.abs(hipY - noseY) + 0.001;
+  const headLift  = Math.min(Math.abs(shoulderY - noseY) / (bodyH * 0.38), 1.0);
+
+  // Shoulder tension: high shoulders (ears close to shoulders) = tense
+  const earMidY      = (lm[7].y + lm[8].y) / 2;
+  const shoulderTension = Math.max(0, 1 - Math.abs(earMidY - shoulderY) / (bodyH * 0.18));
+  const relaxedScore = 1 - shoulderTension;
+
+  return openness * 0.45 + headLift * 0.35 + relaxedScore * 0.20;
+}
+
+// Raw blendshape values for debug display
+let _dbgBS = {};
+
+// Returns { faceScore, jawActivity, angryScore }
+function computeFaceScore(blendshapes) {
+  if (!blendshapes || !blendshapes[0]) return { faceScore: 0.5, jawActivity: 0, angryScore: 0 };
+  const bs = {};
+  blendshapes[0].categories.forEach(c => { bs[c.categoryName] = c.score; });
+  _dbgBS = bs; // expose for debug panel
+
+  // Raw values (MediaPipe keeps these in 0.0–0.3 range for most expressions)
+  const rawSmile    = ((bs.mouthSmileLeft  || 0) + (bs.mouthSmileRight  || 0)) / 2;
+  const rawFrown    = ((bs.mouthFrownLeft  || 0) + (bs.mouthFrownRight  || 0)) / 2;
+  const rawBrowDown = ((bs.browDownLeft    || 0) + (bs.browDownRight    || 0)) / 2;
+  const rawBrowUp   = ((bs.browOuterUpLeft || 0) + (bs.browOuterUpRight || 0)
+                    +  (bs.browInnerUp     || 0)) / 3;
+  const rawEyeBlink = ((bs.eyeBlinkLeft   || 0) + (bs.eyeBlinkRight    || 0)) / 2;
+  const jaw         =   bs.jawOpen        || 0;
+
+  // Amplify — values are naturally tiny; scale to a usable 0–1 range
+  const smile    = Math.min(rawSmile    * 4.0, 1);
+  const mFrown   = Math.min(rawFrown    * 5.0, 1);
+  const browDown = Math.min(rawBrowDown * 3.5, 1);
+  const browUp   = Math.min(rawBrowUp   * 3.0, 1);
+  const eyeOpen  = 1 - Math.min(rawEyeBlink * 3.0, 1);
+
+  // Angry: both brow tension AND frown must be elevated together
+  const angryScore = Math.min(browDown, 1) * Math.min(mFrown, 1);
+
+  const faceScore = Math.max(0, Math.min(1,
+    0.50
+    + smile    * 0.40
+    - mFrown   * 0.35
+    - browDown * 0.30
+    + browUp   * 0.10
+    + (eyeOpen - 0.5) * 0.08
+  ));
+
+  return { faceScore, jawActivity: jaw, angryScore, _smile: smile, _frown: mFrown, _brow: browDown };
+}
+
+function computeMovementScore(curLm, prevLm) {
+  if (!prevLm) return 0.5;
+  const keys = [0, 11, 12, 13, 14, 15, 16];
+  let total = 0, n = 0;
+  keys.forEach(i => {
+    if (curLm[i] && prevLm[i]) {
+      const dx = curLm[i].x - prevLm[i].x;
+      const dy = curLm[i].y - prevLm[i].y;
+      total += Math.sqrt(dx*dx + dy*dy);
+      n++;
+    }
+  });
+  const avg = n ? total / n : 0;
+  // Linear ramp: still → 0.25, natural idle → ~0.40, animated → ~0.75, dancing → 1.0
+  // Threshold 0.04 = vigorous movement in normalised coords at ~30fps
+  return Math.min(0.25 + (avg / 0.04) * 0.75, 1.0);
+}
+
+function getOrCreateState(idx) {
+  if (!personStates[idx]) {
+    personStates[idx] = {
+      battery: 0.65, posture: 0.55, face: 0.55, movement: 0.55,
+      jawActivity: 0, angryScore: 0,
+      isTalking: false, isAngry: false,
+      prev: null, msgTimer: 0, currentMsg: null,
+    };
+  }
+  return personStates[idx];
+}
+
+const SMOOTH_UP = 0.07;   // slower to charge
+const SMOOTH_DOWN = 0.14; // faster to drain
+
+function updateState(state, poseLm, faceBlends) {
+  const rawPosture  = computePostureScore(poseLm);
+  const { faceScore: rawFace, jawActivity, angryScore: rawAngry,
+          _smile, _frown, _brow } = computeFaceScore(faceBlends);
+  state._smile = _smile || 0; state._frown = _frown || 0; state._brow = _brow || 0;
+  const rawMovement = computeMovementScore(poseLm, state.prev);
+
+  state.posture  = state.posture  * 0.90 + rawPosture  * 0.10;
+  state.face     = state.face     * 0.90 + rawFace     * 0.10;
+  state.movement = state.movement * 0.88 + rawMovement * 0.12;
+
+  // Jaw: fast accumulation, slow decay — sustained talking builds up quickly
+  state.jawActivity = state.jawActivity * 0.88 + jawActivity * 0.12;
+  // Anger: needs to be held to trigger, fades quickly when released
+  state.angryScore  = state.angryScore  * 0.85 + rawAngry    * 0.15;
+
+  // ── Battery formula ──────────────────────────────────────────────────────
+  let raw = state.posture * 0.25 + state.face * 0.32 + state.movement * 0.30;
+
+  // Frantic / dancing → Energized bonus
+  if (state.movement > 0.60) raw += (state.movement - 0.60) * 0.50;
+
+  // Talking drain — aggressive: talking a lot tanks the battery noticeably
+  raw -= state.jawActivity * 0.42;
+
+  // Angry override: lerp hard toward floor (0.05)
+  if (state.angryScore > 0.20) {
+    const pull = Math.min((state.angryScore - 0.20) / 0.30, 1.0);
+    raw = raw * (1 - pull * 0.90) + 0.04 * (pull * 0.90);
+  }
+
+  raw = Math.min(Math.max(raw, 0), 1.0);
+  // Asymmetric smoothing: drain snappy, charge gradual
+  const s = raw < state.battery ? SMOOTH_DOWN : SMOOTH_UP;
+  state.battery   = state.battery * (1 - s) + raw * s;
+
+  state.isTalking = state.jawActivity > 0.22;
+  state.isAngry   = state.angryScore  > 0.25;
+  state.prev      = poseLm.map(l => ({ ...l }));
+  return state;
+}
+
+// ── Commentary messages ───────────────────────────────────────────────────────
+const MESSAGES = {
+  energized: [
+    "You're radiating right now ✨",
+    "The room can feel your energy",
+    "Keep that momentum going!",
+    "Absolutely glowing 🔥",
+    "You're in the zone!",
+  ],
+  present: [
+    "You're showing up well",
+    "Good presence — keep it up",
+    "Feeling connected",
+    "You're holding the space nicely",
+  ],
+  engaged: [
+    "You've got this",
+    "Staying in it — nice",
+    "Pacing yourself well",
+    "Take a breath and keep going",
+  ],
+  fading: [
+    "How are you doing? 💙",
+    "Take a moment to breathe",
+    "Need a little recharge?",
+    "It's ok to slow down",
+    "Pace yourself — no rush",
+  ],
+  needsSpace: [
+    "Are you ok? 💙",
+    "It's completely ok to step away",
+    "You can take space whenever you need",
+    "Take a deep breath 🌿",
+    "This is a safe place to rest",
+  ],
+  talking: [
+    "Take a breath between words",
+    "Let others respond for a moment",
+    "Pause and listen — recharge a little",
+    "Even a brief silence helps 🌿",
+  ],
+  angry: [
+    "Something bothering you? 💙",
+    "It's ok to feel what you're feeling",
+    "Take a moment — no pressure",
+    "Want to step outside for a sec?",
+  ],
+  dancing: [
+    "Love the energy! 🕺",
+    "You're on fire!",
+    "Unstoppable right now 🔥",
+    "Feel that! Keep going!",
+  ],
+};
+
+function pickMsg(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+function getCurrentMsg(state, battery, now) {
+  const INTERVAL = 5500;
+  if (!state.msgTimer || now - state.msgTimer > INTERVAL) {
+    state.msgTimer = now;
+    // Priority order
+    if (state.isAngry)                            state.currentMsg = pickMsg(MESSAGES.angry);
+    else if (state.movement > 0.78 && battery > 0.65) state.currentMsg = pickMsg(MESSAGES.dancing);
+    else if (state.isTalking && battery < 0.55)   state.currentMsg = pickMsg(MESSAGES.talking);
+    else if (battery >= 0.80) state.currentMsg = pickMsg(MESSAGES.energized);
+    else if (battery >= 0.60) state.currentMsg = pickMsg(MESSAGES.present);
+    else if (battery >= 0.40) state.currentMsg = pickMsg(MESSAGES.engaged);
+    else if (battery >= 0.20) state.currentMsg = pickMsg(MESSAGES.fading);
+    else                      state.currentMsg = pickMsg(MESSAGES.needsSpace);
+  }
+  return state.currentMsg;
+}
+
+function drawCommentary(x, y, state, battery, now) {
+  const msg = getCurrentMsg(state, battery, now);
+  if (!msg) return;
+
+  // Fade in/out within each interval
+  const elapsed = now - state.msgTimer;
+  const fadeIn  = Math.min(elapsed / 600, 1);
+  const fadeOut = elapsed > MESSAGES && elapsed > 4500 ? Math.max(0, 1 - (elapsed - 4500) / 500) : 1;
+  const alpha   = fadeIn * (elapsed > 4500 ? Math.max(0, 1 - (elapsed - 4500) / 500) : 1);
+
+  const lvl = levelFor(battery);
+
+  ctx.save();
+  ctx.globalAlpha = Math.max(0, Math.min(alpha, 1));
+  ctx.font = '500 12px -apple-system, sans-serif';
+  const tw = ctx.measureText(msg).width;
+  const pw = tw + 24, ph = 26;
+  const px = x - pw / 2, py = y;
+
+  // Pill background
+  ctx.beginPath();
+  ctx.roundRect(px, py, pw, ph, ph / 2);
+  ctx.fillStyle = 'rgba(0,0,0,0.58)';
+  ctx.fill();
+  ctx.strokeStyle = lvl.color + '55';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  // Text
+  ctx.fillStyle = '#e2e8f0';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(msg, x, py + ph / 2);
+  ctx.restore();
+}
+
+// ── Face label helpers ────────────────────────────────────────────────────────
+function lerpColor(a, b, t) {
+  const p = s => parseInt(s, 16);
+  const r = Math.round(p(a.slice(1,3)) + (p(b.slice(1,3)) - p(a.slice(1,3))) * t);
+  const g = Math.round(p(a.slice(3,5)) + (p(b.slice(3,5)) - p(a.slice(3,5))) * t);
+  const bl= Math.round(p(a.slice(5,7)) + (p(b.slice(5,7)) - p(a.slice(5,7))) * t);
+  return `rgb(${r},${g},${bl})`;
+}
+
+function midLm(lmArr, indices) {
+  const pts = indices.map(i => lmArr[i]);
+  return { x: pts.reduce((s,p)=>s+p.x,0)/pts.length,
+           y: pts.reduce((s,p)=>s+p.y,0)/pts.length };
+}
+
+// Draw a single face callout: dot + dashed line + pill label + mini bar
+function drawFaceCallout(ax, ay, dx, dy, label, value, color) {
+  const LINE = 52;
+  const ex = ax + dx * LINE, ey = ay + dy * LINE;
+
+  // Glowing dot at landmark
+  ctx.save();
+  ctx.shadowColor = color; ctx.shadowBlur = 10;
+  ctx.beginPath(); ctx.arc(ax, ay, 4, 0, Math.PI*2);
+  ctx.fillStyle = color; ctx.fill();
+  ctx.restore();
+
+  // Dashed connector line
+  ctx.save();
+  ctx.strokeStyle = color + 'aa'; ctx.lineWidth = 1;
+  ctx.setLineDash([4, 4]);
+  ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(ex, ey); ctx.stroke();
+  ctx.restore();
+
+  // Pill label
+  ctx.save();
+  ctx.font = '10px -apple-system, sans-serif';
+  const BARW = 26;
+  const tw = ctx.measureText(label).width;
+  const pw = tw + BARW + 22, ph = 18;
+
+  // Position pill relative to line endpoint and direction
+  let px = ex, py = ey - ph / 2;
+  if (dx < 0)       px = ex - pw;
+  else if (dx === 0) px = ex - pw / 2;
+  if (dy > 0)       py = ey;
+  else if (dy < 0)  py = ey - ph;
+
+  ctx.beginPath(); ctx.roundRect(px, py, pw, ph, ph/2);
+  ctx.fillStyle = 'rgba(0,0,0,0.72)'; ctx.fill();
+  ctx.strokeStyle = color + '99'; ctx.lineWidth = 1; ctx.stroke();
+
+  // Text
+  ctx.fillStyle = color; ctx.textBaseline = 'middle';
+  ctx.textAlign = 'left';
+  const textX = dx >= 0 ? px + 9 : px + 9;
+  ctx.fillText(label, textX, py + ph/2);
+
+  // Mini bar
+  const bx = textX + tw + 6, by = py + ph/2 - 2;
+  ctx.beginPath(); ctx.roundRect(bx, by, BARW, 4, 2);
+  ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fill();
+  ctx.beginPath(); ctx.roundRect(bx, by, BARW * Math.min(value, 1), 4, 2);
+  ctx.fillStyle = color; ctx.fill();
+  ctx.restore();
+}
+
+// Draw all face signal labels anchored to landmarks
+function drawFaceLabels(faceLm, blendshapes, map) {
+  if (!faceLm || faceLm.length < 400) return;
+
+  const bs = {};
+  if (blendshapes && blendshapes[0]) {
+    blendshapes[0].categories.forEach(c => { bs[c.categoryName] = c.score; });
+  }
+
+  // Use same amplification as computeFaceScore so labels match battery behavior
+  const browDown  = Math.min(((bs.browDownLeft   || 0) + (bs.browDownRight  || 0)) / 2 * 3.5, 1);
+  const smile     = Math.min(((bs.mouthSmileLeft || 0) + (bs.mouthSmileRight|| 0)) / 2 * 4.0, 1);
+  const mFrown    = Math.min(((bs.mouthFrownLeft || 0) + (bs.mouthFrownRight|| 0)) / 2 * 5.0, 1);
+  const jawOpen   =   bs.jawOpen        || 0;
+
+  // ── Eyebrow region (between brows, label upper-left) ──
+  const browMid = midLm(faceLm, [105, 334]); // inner brow landmarks
+  const browPt  = lmToCanvas(browMid, map);
+  const browColor = lerpColor('#6ee7b7', '#f87171', browDown);
+  drawFaceCallout(browPt.x, browPt.y, -0.7, -0.72, 'Tension', browDown, browColor);
+
+  // ── Right mouth corner → Smile (label right) ──
+  const smilePt = lmToCanvas(faceLm[291], map);
+  const smileColor = lerpColor('#64748b', '#6ee7b7', smile);
+  drawFaceCallout(smilePt.x, smilePt.y, 1, 0, 'Smile', smile, smileColor);
+
+  // ── Left mouth corner → Frown (label left) ──
+  const frownPt = lmToCanvas(faceLm[61], map);
+  const frownColor = lerpColor('#64748b', '#f87171', mFrown);
+  drawFaceCallout(frownPt.x, frownPt.y, -1, 0, 'Frown', mFrown, frownColor);
+
+  // ── Chin/jaw → Talking (label below) ──
+  const chinPt = lmToCanvas(faceLm[152], map);
+  const talkColor = lerpColor('#64748b', '#a78bfa', jawOpen);
+  drawFaceCallout(chinPt.x, chinPt.y, 0, 1, 'Talking', jawOpen, talkColor);
+}
+
+// ── Drawing ───────────────────────────────────────────────────────────────────
+
+// POSE connections for skeleton
+const POSE_CONNECTIONS = [
+  [11,12],[11,13],[13,15],[12,14],[14,16],   // arms
+  [11,23],[12,24],[23,24],                   // torso
+  [23,25],[25,27],[24,26],[26,28],           // legs
+  [0,1],[1,2],[2,3],[3,7],[0,4],[4,5],[5,6],[6,8], // face/head edges
+];
+
+function drawSkeleton(lm, map, alpha) {
+  ctx.save();
+  ctx.globalAlpha = alpha * 0.6;
+  ctx.strokeStyle = '#a78bfa';
+  ctx.lineWidth = 2;
+  ctx.lineCap = 'round';
+  POSE_CONNECTIONS.forEach(([a, b]) => {
+    if (!lm[a] || !lm[b]) return;
+    if ((lm[a].visibility || 0) < 0.4 || (lm[b].visibility || 0) < 0.4) return;
+    const pa = lmToCanvas(lm[a], map);
+    const pb = lmToCanvas(lm[b], map);
+    ctx.beginPath();
+    ctx.moveTo(pa.x, pa.y);
+    ctx.lineTo(pb.x, pb.y);
+    ctx.stroke();
+  });
+  // Keypoints
+  lm.forEach(l => {
+    if ((l.visibility || 0) < 0.4) return;
+    const p = lmToCanvas(l, map);
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 3, 0, Math.PI*2);
+    ctx.fillStyle = '#a78bfa';
+    ctx.globalAlpha = alpha * 0.8;
+    ctx.fill();
+  });
+  ctx.restore();
+}
+
+function drawFocusBrackets(x1, y1, x2, y2, color, glowColor, battery, now) {
+  const PAD  = 12;
+  const lx   = x1 - PAD, rx = x2 + PAD;
+  const ty   = y1 - PAD, by = y2 + PAD;
+  const ARM  = Math.min((rx - lx) * 0.18, 36); // corner arm length
+  const PULSE = 1 + 0.04 * Math.sin(now * 0.004); // subtle scale pulse
+
+  // Animate toward target — brackets "snap in" by scaling from center
+  const cx = (lx + rx) / 2, cy = (ty + by) / 2;
+
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.scale(PULSE, PULSE);
+  ctx.translate(-cx, -cy);
+
+  ctx.strokeStyle = color;
+  ctx.lineWidth   = 2.5;
+  ctx.lineCap     = 'round';
+  ctx.shadowColor = glowColor;
+  ctx.shadowBlur  = 12;
+
+  const corners = [
+    [lx, ty,  ARM, 0,   0,   ARM],   // top-left
+    [rx, ty, -ARM, 0,   0,   ARM],   // top-right
+    [lx, by,  ARM, 0,   0,  -ARM],   // bottom-left
+    [rx, by, -ARM, 0,   0,  -ARM],   // bottom-right
+  ];
+
+  corners.forEach(([ox, oy, hx, hy, vx, vy]) => {
+    ctx.beginPath();
+    ctx.moveTo(ox + hx, oy + hy);   // horizontal arm end
+    ctx.lineTo(ox, oy);             // corner
+    ctx.lineTo(ox + vx, oy + vy);   // vertical arm end
+    ctx.stroke();
+  });
+
+  ctx.restore();
+
+  // Scan-line — smooth sine oscillation, no reset jitter
+  const scanT = (Math.sin(now * 0.0011) + 1) / 2; // 0→1→0 every ~5.7s
+  const scanY = ty + (by - ty) * scanT;
+  ctx.save();
+  const scanGrad = ctx.createLinearGradient(lx, scanY - 14, lx, scanY + 14);
+  scanGrad.addColorStop(0,    color + '00');
+  scanGrad.addColorStop(0.45, color + '33');
+  scanGrad.addColorStop(0.5,  color + '66');
+  scanGrad.addColorStop(0.55, color + '33');
+  scanGrad.addColorStop(1,    color + '00');
+  ctx.fillStyle = scanGrad;
+  ctx.fillRect(lx, scanY - 14, rx - lx, 28);
+  ctx.restore();
+}
+
+function drawHalo(cx, cy, rx, color, glowColor, floatOffset) {
+  const ry = rx * 0.22;
+  // Outer glow ring
+  ctx.save();
+  ctx.shadowColor = glowColor;
+  ctx.shadowBlur = 22 + Math.abs(floatOffset) * 0.6;
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 3;
+  ctx.globalAlpha = 0.78;
+  ctx.beginPath();
+  ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
+  // Soft inner fill
+  ctx.save();
+  ctx.globalAlpha = 0.13;
+  const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, rx);
+  g.addColorStop(0, color);
+  g.addColorStop(1, 'transparent');
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawAura(cx, cy, rx, ry, color, glowColor, alpha) {
+  ctx.save();
+  ctx.globalAlpha = alpha * 0.22;
+  // Soft glow blob
+  const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(rx, ry) * 1.1);
+  grad.addColorStop(0,   glowColor + 'cc');
+  grad.addColorStop(0.5, glowColor + '44');
+  grad.addColorStop(1,   glowColor + '00');
+  ctx.fillStyle = grad;
+  ctx.scale(1, ry / rx);
+  ctx.beginPath();
+  ctx.arc(cx, cy * (rx / ry), rx * 1.1, 0, Math.PI*2);
+  ctx.fill();
+  ctx.restore();
+
+  // Crisp edge ring
+  ctx.save();
+  ctx.globalAlpha = alpha * 0.35;
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2;
+  ctx.setLineDash([6, 5]);
+  ctx.beginPath();
+  ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI*2);
+  ctx.stroke();
+  ctx.restore();
+}
+
+// y = bottom of the whole floating cluster (everything stacks upward from here)
+function drawBatteryIndicator(x, y, battery, state) {
+  const lvl = levelFor(battery);
+  const pct = Math.round(battery * 100);
+  const BW = 130, BH = 32, TERM = 8, R = 8;
+
+  // Layout bottom→top: signal bars (16px) → gap 6 → label (20px) → gap 8 → battery (32px)
+  const barsTop  = y - 16;
+  const labelCY  = barsTop - 6 - 10;   // vertical center of label
+  const by       = labelCY - 10 - 8;   // battery top
+  const bx       = x - BW / 2;
+
+  // ── Signal bars ──
+  drawSignalBars(x, barsTop, state);
+
+  // ── Status label ──
+  ctx.save();
+  ctx.font = '600 12px -apple-system, sans-serif';
+  const lw = ctx.measureText(lvl.label).width + 22;
+  ctx.beginPath();
+  ctx.roundRect(x - lw/2, labelCY - 10, lw, 20, 10);
+  ctx.fillStyle = 'rgba(0,0,0,0.62)';
+  ctx.fill();
+  ctx.fillStyle = lvl.color;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(lvl.label, x, labelCY);
+  ctx.restore();
+
+  // ── Battery shell ──
+  ctx.save();
+  ctx.shadowColor = lvl.glow;
+  ctx.shadowBlur = 18;
+  ctx.beginPath();
+  ctx.roundRect(bx, by, BW, BH, R);
+  ctx.fillStyle = 'rgba(0,0,0,0.65)';
+  ctx.fill();
+  ctx.strokeStyle = lvl.color;
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  // Terminal nub
+  ctx.beginPath();
+  ctx.roundRect(bx + BW + 1, by + BH*0.3, TERM, BH*0.4, 3);
+  ctx.fillStyle = lvl.color;
+  ctx.fill();
+  ctx.restore();
+
+  // ── Fill ──
+  const fillW = (BW - 6) * battery;
+  if (fillW > 0) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.roundRect(bx + 3, by + 3, fillW, BH - 6, Math.max(0, R - 3));
+    const fg = ctx.createLinearGradient(bx+3, 0, bx+3+fillW, 0);
+    fg.addColorStop(0, lvl.glow);
+    fg.addColorStop(1, lvl.color);
+    ctx.fillStyle = fg;
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // ── Percentage text ──
+  ctx.save();
+  ctx.font = 'bold 13px -apple-system, sans-serif';
+  ctx.fillStyle = '#fff';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.shadowColor = 'rgba(0,0,0,0.9)';
+  ctx.shadowBlur = 4;
+  ctx.fillText(`${pct}%`, bx + BW/2, by + BH/2);
+  ctx.restore();
+}
+
+function drawSignalBars(cx, y, state) {
+  const talkDrain = Math.min(state.jawActivity / 0.5, 1.0); // 0=silent 1=talking a lot
+  const signals = [
+    { label: 'Mood',   val: state.face                    },
+    { label: 'Talk',   val: 1 - talkDrain, inverted: true }, // drains = red when high
+    { label: 'Energy', val: state.movement                },
+  ];
+  const barW = 30, barH = 4, gap = 40;
+  const totalW = signals.length * barW + (signals.length-1) * (gap - barW);
+  let startX = cx - (signals.length * gap) / 2 + gap/2 - barW/2;
+
+  signals.forEach((sig, i) => {
+    const bx = startX + i * gap;
+    ctx.save();
+    // Track
+    ctx.beginPath();
+    ctx.roundRect(bx, y, barW, barH, barH/2);
+    ctx.fillStyle = 'rgba(255,255,255,0.15)';
+    ctx.fill();
+    // Fill (talk bar inverts: the drain amount fills red)
+    const fillVal = sig.inverted ? (1 - sig.val) : sig.val;
+    const fillColor = sig.inverted
+      ? `hsl(${Math.round((1 - fillVal) * 10)}, 90%, 60%)` // red as talk increases
+      : levelFor(sig.val).color;
+    ctx.beginPath();
+    ctx.roundRect(bx, y, barW * (sig.inverted ? fillVal : sig.val), barH, barH/2);
+    ctx.fillStyle = fillColor;
+    ctx.fill();
+    // Label
+    ctx.font = '9px -apple-system, sans-serif';
+    ctx.fillStyle = 'rgba(255,255,255,0.4)';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    ctx.fillText(sig.label, bx + barW/2, y + barH + 3);
+    ctx.restore();
+  });
+}
+
+// ── Detection loop ────────────────────────────────────────────────────────────
+let lastVideoTime = -1;
+let detectedCount = 0;
+
+function detect() {
+  requestAnimationFrame(detect);
+
+  if (!poseLandmarker || cam.readyState < 2) return;
+  if (cam.currentTime === lastVideoTime) return;
+  lastVideoTime = cam.currentTime;
+
+  const now = performance.now();
+  const map  = getVideoMapping();
+
+  ctx.clearRect(0, 0, W, H);
+
+  // Run pose
+  const poseResult = poseLandmarker.detectForVideo(cam, now);
+  const poses = poseResult.landmarks || [];
+
+  // Run face (if loaded)
+  let faceResult = null;
+  if (faceLandmarker) {
+    faceResult = faceLandmarker.detectForVideo(cam, now);
+  }
+  const faceBlendshapes  = faceResult?.faceBlendshapes  || [];
+  const faceLandmarksList = faceResult?.faceLandmarks   || [];
+
+  detectedCount = poses.length;
+  updateStatus(detectedCount);
+
+  poses.forEach((poseLm, i) => {
+    const state = getOrCreateState(i);
+    const blends = faceBlendshapes[i] ? [faceBlendshapes[i]] : null;
+    updateState(state, poseLm, blends);
+
+    const battery = state.battery;
+    const lvl     = levelFor(battery);
+
+    // --- Compute bounding region from visible landmarks ---
+    const visible = poseLm.filter(l => (l.visibility || 0) > 0.4);
+    if (visible.length < 4) return;
+
+    const pts = visible.map(l => lmToCanvas(l, map));
+    const xs = pts.map(p => p.x), ys = pts.map(p => p.y);
+    const minX = Math.min(...xs), maxX = Math.max(...xs);
+    const minY = Math.min(...ys), maxY = Math.max(...ys);
+    const cx = (minX + maxX) / 2;
+    const cy = (minY + maxY) / 2;
+    const rx = (maxX - minX) / 2 * 1.25;
+    const ry = (maxY - minY) / 2 * 1.15;
+
+    // Camera-focus corner brackets
+    drawFocusBrackets(minX, minY, maxX, maxY, lvl.color, lvl.glow, battery, now);
+
+    // Aura
+    drawAura(cx, cy, rx, ry, lvl.color, lvl.glow, battery);
+
+    // Skeleton (optional)
+    if (showSkeleton) drawSkeleton(poseLm, map, 0.7);
+
+    // ── Floating battery above head ──
+    const nosePt   = lmToCanvas(poseLm[0], map);
+    const earL     = lmToCanvas(poseLm[7], map);
+    const earR     = lmToCanvas(poseLm[8], map);
+    const headW    = Math.max(Math.abs(earR.x - earL.x), 60);
+    const headTopY = nosePt.y - headW * 0.95;          // estimated crown of head
+    const floatOff = Math.sin(now * 0.0016 + i * 1.4) * 9; // gentle bob per person
+    const haloY    = headTopY + headW * 0.06;          // halo sits just above crown
+    const clusterBottom = headTopY - 18 - floatOff;   // cluster floats above halo
+
+    drawHalo(nosePt.x, haloY, headW * 0.60, lvl.color, lvl.glow, floatOff);
+    drawBatteryIndicator(nosePt.x, clusterBottom, battery, state);
+    drawCommentary(nosePt.x, clusterBottom + 90, state, battery, now);
+    // Face signal labels (only when face model is loaded)
+    if (faceLandmarksList[i]) {
+      drawFaceLabels(faceLandmarksList[i], faceBlendshapes[i] ? [faceBlendshapes[i]] : null, map);
+    }
+    if (i === 0) updateDebugPanel(state);
+  });
+
+  // "No person" hint
+  if (detectedCount === 0) {
+    ctx.save();
+    ctx.font = '14px -apple-system, sans-serif';
+    ctx.fillStyle = 'rgba(255,255,255,0.5)';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('Point camera at a person', W/2, H/2);
+    ctx.restore();
+  }
+}
+
+function updateStatus(n) {
+  if (!poseLandmarker) {
+    statusEl.textContent = 'Loading models…';
+    return;
+  }
+  if (!faceLandmarker) {
+    statusEl.textContent = n > 0
+      ? `${n} person detected · Loading face model…`
+      : 'Scanning… face model loading';
+    return;
+  }
+  statusEl.textContent = n > 0
+    ? `${n} person${n > 1 ? 's' : ''} detected`
+    : 'Scanning for people…';
+}
+
+// ── Model loading ─────────────────────────────────────────────────────────────
+async function loadModels() {
+  setLoadProgress(5);
+  const vision = await FilesetResolver.forVisionTasks(
+    'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm'
+  );
+  setLoadProgress(25);
+
+  // Load pose first (more critical)
+  poseLandmarker = await PoseLandmarker.createFromOptions(vision, {
+    baseOptions: {
+      modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task',
+      delegate: 'GPU',
+    },
+    runningMode: 'VIDEO',
+    numPoses: 3,
+    minPoseDetectionConfidence: 0.5,
+    minPosePresenceConfidence: 0.5,
+    minTrackingConfidence: 0.5,
+  });
+  setLoadProgress(65);
+  updateStatus(0);
+
+  // Load face async (enhancement)
+  FaceLandmarker.createFromOptions(vision, {
+    baseOptions: {
+      modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task',
+      delegate: 'GPU',
+    },
+    runningMode: 'VIDEO',
+    numFaces: 3,
+    outputFaceBlendshapes: true,
+    minFaceDetectionConfidence: 0.5,
+    minFacePresenceConfidence: 0.5,
+    minTrackingConfidence: 0.5,
+  }).then(fl => {
+    faceLandmarker = fl;
+    setLoadProgress(100);
+    setTimeout(() => { loadBar.style.opacity = '0'; }, 800);
+  }).catch(() => {
+    setLoadProgress(100); // Face is optional
+  });
+
+  detect(); // Start loop
+}
+
+function setLoadProgress(pct) {
+  loadBar.style.width = pct + '%';
+}
+
+// ── UI ────────────────────────────────────────────────────────────────────────
+skelBtn.addEventListener('click', () => {
+  showSkeleton = !showSkeleton;
+  skelBtn.textContent = showSkeleton ? 'Skeleton on' : 'Skeleton off';
+  skelBtn.classList.toggle('on', showSkeleton);
+});
+
+const debugPanel   = document.getElementById('debug-panel');
+const toggleDebug  = document.getElementById('toggle-debug');
+const dbgFaceModel = document.getElementById('dbg-face-model');
+const dbgSmile     = document.getElementById('dbg-smile');
+const dbgFrown     = document.getElementById('dbg-frown');
+const dbgBrow      = document.getElementById('dbg-brow');
+const dbgJaw       = document.getElementById('dbg-jaw');
+const dbgBattery   = document.getElementById('dbg-battery');
+let   showDebug    = false;
+
+toggleDebug.addEventListener('click', () => {
+  showDebug = !showDebug;
+  debugPanel.classList.toggle('visible', showDebug);
+});
+
+function updateDebugPanel(state) {
+  if (!showDebug) return;
+  dbgFaceModel.textContent = faceLandmarker ? '✓' : 'loading';
+  dbgFaceModel.style.color = faceLandmarker ? '#6ee7b7' : '#fbbf24';
+  const fmt = v => v != null ? (v * 100).toFixed(0) + '%' : '—';
+  dbgSmile.textContent   = fmt(state?._smile);
+  dbgFrown.textContent   = fmt(state?._frown);
+  dbgBrow.textContent    = fmt(state?._brow);
+  dbgJaw.textContent     = fmt(state?.jawActivity);
+  dbgBattery.textContent = fmt(state?.battery);
+  dbgSmile.style.color   = state?._smile  > 0.2 ? '#6ee7b7' : '#94a3b8';
+  dbgFrown.style.color   = state?._frown  > 0.2 ? '#f87171' : '#94a3b8';
+  dbgBrow.style.color    = state?._brow   > 0.2 ? '#f97316' : '#94a3b8';
+  dbgJaw.style.color     = state?.jawActivity > 0.2 ? '#a78bfa' : '#94a3b8';
+}
+
+document.getElementById('start-btn').addEventListener('click', async () => {
+  // iOS orientation permission
+  if (typeof DeviceOrientationEvent?.requestPermission === 'function') {
+    DeviceOrientationEvent.requestPermission().catch(() => {});
+  }
+
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
+      audio: false,
+    });
+    cam.srcObject = stream;
+    await cam.play();
+    landing.style.display = 'none';
+    hud.classList.add('active');
+    loadModels();
+  } catch (err) {
+    errEl.textContent = 'Camera error: ' + err.message;
+  }
+});
+</script>
+</body>
+</html>
