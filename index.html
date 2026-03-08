@@ -599,7 +599,7 @@
     }
     #drawer-title {
       font-family: var(--font-m);
-      font-size: 0.56rem;
+      font-size: 0.70rem;
       letter-spacing: 0.2em;
       color: var(--accent);
       text-transform: uppercase;
@@ -622,7 +622,7 @@
     #drawer-empty {
       padding: 40px 16px;
       font-family: var(--font-m);
-      font-size: 0.55rem;
+      font-size: 0.70rem;
       color: var(--muted);
       letter-spacing: 0.1em;
       text-align: center;
@@ -644,7 +644,7 @@
     }
     .drawer-item-label {
       font-family: var(--font-m);
-      font-size: 0.46rem;
+      font-size: 0.62rem;
       letter-spacing: 0.16em;
       text-transform: uppercase;
     }
@@ -657,7 +657,7 @@
     .drawer-item-close:hover { color: var(--accent); }
     .drawer-item-msg {
       font-family: var(--font-m);
-      font-size: 0.60rem;
+      font-size: 0.78rem;
       color: var(--text);
       line-height: 1.55;
       letter-spacing: 0.03em;
@@ -959,13 +959,14 @@ function computeFaceScore(blendshapes) {
   _dbgBS = bs; // expose for debug panel
 
   const rawSmile = ((bs.mouthSmileLeft  || 0) + (bs.mouthSmileRight  || 0)) / 2;
-  // Frown uses ONLY dedicated frown blendshapes — mouthLowerDown fires during smiles, excluded
-  const rawFrown = ((bs.mouthFrownLeft  || 0) + (bs.mouthFrownRight  || 0)) / 2;
+  // Frown: dedicated blendshapes are weak in MediaPipe; supplement with mouthPucker (pout/frown)
+  const rawFrown = ((bs.mouthFrownLeft  || 0) + (bs.mouthFrownRight  || 0)) / 2
+                 + (bs.mouthPucker      || 0) * 0.25;
   const jaw      =   bs.jawOpen         || 0;
 
-  // Amplify — values are naturally tiny; scale to a usable 0–1 range
+  // Amplify — mouthFrown values are naturally tiny; scale to a usable 0–1 range
   const smile  = Math.min(rawSmile * 4.0, 1);
-  const mFrown = Math.min(rawFrown * 9.0, 1);
+  const mFrown = Math.min(rawFrown * 16.0, 1);
 
   // Suppress frown when smiling — physically can't be angry while genuinely smiling
   const netFrown   = Math.max(0, mFrown - smile * 0.9);
@@ -1405,7 +1406,7 @@ function drawFaceLabels(pts, blendshapes) {
   }
 
   const smile   = Math.min(((bs.mouthSmileLeft || 0) + (bs.mouthSmileRight|| 0)) / 2 * 4.0, 1);
-  const mFrown  = Math.min(((bs.mouthFrownLeft || 0) + (bs.mouthFrownRight|| 0)) / 2 * 9.0, 1);
+  const mFrown  = Math.min((((bs.mouthFrownLeft || 0) + (bs.mouthFrownRight|| 0)) / 2 + (bs.mouthPucker || 0) * 0.25) * 16.0, 1);
   const jawOpen =   bs.jawOpen || 0;
 
   drawFaceCallout(pts.fSmileX, pts.fSmileY,  1,  0, 'SMILE',   smile,   lerpColor('#64748b', '#6ee7b7', smile));
