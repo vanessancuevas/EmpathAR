@@ -1092,11 +1092,14 @@ function updateState(state, poseLm, faceBlends, faceLm) {
 
   const nowMs = performance.now();
 
-  // ── Sustained frown → Needs Space (5 second trigger) ──
+  // ── Sustained frown → Fading (3s), then Needs Space (10s) ──
   if (state._frown > 0.45) {
     if (!state.frownStart) state.frownStart = nowMs;
-    if (nowMs - state.frownStart >= 5000) {
+    const frownDur = nowMs - state.frownStart;
+    if (frownDur >= 10000) {
       state.battery = Math.min(state.battery, 0.10);
+    } else if (frownDur >= 3000) {
+      state.battery = Math.min(state.battery, 0.35);
     }
   } else {
     state.frownStart = null;
