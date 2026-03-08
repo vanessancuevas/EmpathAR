@@ -129,8 +129,8 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: space-evenly;
-      gap: 0;
+      justify-content: center;
+      gap: clamp(12px, 3vh, 32px);
       padding: 16px 16px;
       position: relative; z-index: 1;
       width: 100%;
@@ -145,7 +145,6 @@
       border: 1px solid var(--accent-bd);
       padding: 20px 16px 16px;
       text-align: center;
-      margin-bottom: 12px;
     }
 
     .title-eyebrow {
@@ -200,7 +199,6 @@
       gap: 8px;
       width: 100%;
       max-width: 360px;
-      margin-bottom: 16px;
       min-width: 0;
     }
 
@@ -388,7 +386,6 @@
       flex-direction: column;
       align-items: center;
       gap: 6px;
-      margin-bottom: 16px;
     }
 
     .radar {
