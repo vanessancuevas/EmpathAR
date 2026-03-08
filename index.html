@@ -129,7 +129,7 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
+      justify-content: flex-start;
       gap: 0;
       padding: 16px 16px 0;
       position: relative; z-index: 1;
@@ -804,6 +804,11 @@
   <!-- Main content -->
   <div class="landing-body">
 
+    <!-- Chrome note — flex:1 spacer centers it between sys-bar and radar -->
+    <div style="flex:1;display:flex;align-items:center;justify-content:center;width:100%;">
+      <p style="text-align:center;font-family:'Space Mono',monospace;font-size:0.55rem;color:#c8faf5;letter-spacing:0.10em;margin:0;">Best experience on Chrome — Android enables focus lock for smoother tracking.</p>
+    </div>
+
     <!-- Radar -->
     <div class="radar-wrap">
       <div class="radar">
@@ -819,8 +824,6 @@
       </div>
 
     </div>
-
-    <p style="text-align:center;font-family:'Space Mono',monospace;font-size:0.55rem;color:#c8faf5;letter-spacing:0.10em;margin:0;">Best experience on Chrome — Android enables focus lock for smoother tracking.</p>
 
     <div class="title-panel bracketed">
       <div class="title-eyebrow">System<span>//</span>Social Intelligence</div>
@@ -846,6 +849,7 @@
 
     <button id="start-btn">[ Initialize Scan ]</button>
     <p id="error-msg"></p>
+    <div style="flex:1;"></div>
   </div>
 
   <!-- Bottom system bar -->
