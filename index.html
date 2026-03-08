@@ -844,6 +844,7 @@
 
     <button id="start-btn">[ Initialize Scan ]</button>
     <p id="error-msg"></p>
+    <p style="font-family:'Space Mono',monospace;font-size:0.55rem;color:rgba(184,237,232,0.35);letter-spacing:0.10em;margin-top:12px;">Best experience on Chrome — Android enables focus lock for smoother tracking.</p>
   </div>
 
   <!-- Bottom system bar -->
@@ -1038,7 +1039,7 @@ function getOrCreateState(idx) {
 
 const SMOOTH_UP   = 0.04;  // slower to charge
 const SMOOTH_DOWN = 0.05;  // faster to drain
-const POS_ALPHA   = 0.40;  // drawing-position EMA — responsive but jitter-free
+const POS_ALPHA   = 0.18;  // drawing-position EMA — tighter to reduce overlay jitter
 
 function updateState(state, poseLm, faceBlends, faceLm) {
   const { postureScore: rawPosture, crossedArms: rawCrossed } = computePostureScore(poseLm);
@@ -2099,9 +2100,16 @@ document.getElementById('start-btn').addEventListener('click', async () => {
 
   try {
     const stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
+      video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 }, focusMode: 'fixed' },
       audio: false,
     });
+    // Lock focus if supported (reduces landmark jitter from autofocus hunting)
+    try {
+      const track = stream.getVideoTracks()[0];
+      if (track && track.applyConstraints) {
+        await track.applyConstraints({ advanced: [{ focusMode: 'manual' }] });
+      }
+    } catch (_) {}
     cam.srcObject = stream;
     await cam.play();
     landing.style.display = 'none';
