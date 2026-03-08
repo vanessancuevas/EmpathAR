@@ -1944,6 +1944,17 @@ function detect() {
     const faceLm0 = faceLandmarksList[poseIdx] || null;
     updateState(state, poseLm, blends, faceLm0);
 
+    // ── Smooth skeleton landmarks via per-joint EMA ──────────────────────────
+    const LM_ALPHA = 0.18;
+    if (!state._smoothLm) state._smoothLm = poseLm.map(l => ({ ...l }));
+    poseLm.forEach((l, i) => {
+      const s = state._smoothLm[i];
+      s.x = s.x * (1 - LM_ALPHA) + l.x * LM_ALPHA;
+      s.y = s.y * (1 - LM_ALPHA) + l.y * LM_ALPHA;
+      s.z = s.z * (1 - LM_ALPHA) + l.z * LM_ALPHA;
+      s.visibility = l.visibility;
+    });
+
     const battery = state.battery;
     const lvl     = levelFor(battery);
 
@@ -1992,7 +2003,7 @@ function detect() {
     drawFocusBrackets(sp.minX, sp.minY, sp.maxX, sp.maxY, lvl.color, lvl.glow, battery, now);
     drawAura(cx, cy, rx, ry, lvl.color, lvl.glow, battery);
 
-    if (showSkeleton) drawSkeleton(poseLm, map, 0.7);
+    if (showSkeleton) drawSkeleton(state._smoothLm || poseLm, map, 0.7);
 
     // Floating battery above head
     const floatOff      = Math.sin(now * 0.0016 + person.id * 1.4) * 9;
