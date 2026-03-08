@@ -332,17 +332,26 @@
     }
 
     .legend-row {
-      display: flex; align-items: center; gap: 7px;
-      margin-bottom: 4px;
+      display: flex; align-items: flex-start; gap: 7px;
+      margin-bottom: 8px;
       font-family: var(--font-m);
       font-size: 0.58rem;
-      color: var(--muted);
+      color: var(--text);
       letter-spacing: 0.06em;
     }
 
     .legend-dot {
       width: 6px; height: 6px;
       flex-shrink: 0;
+      margin-top: 3px;
+    }
+
+    .legend-desc {
+      font-size: 0.52rem;
+      color: var(--muted);
+      line-height: 1.5;
+      margin-top: 2px;
+      letter-spacing: 0.02em;
     }
 
     .hud-btn {
@@ -733,11 +742,26 @@
       <span id="legend-toggle-icon">▾</span>
     </button>
     <div id="legend-rows">
-      <div class="legend-row"><div class="legend-dot" style="background:#6ee7b7"></div>Energized — Expand &amp; Open Up</div>
-      <div class="legend-row"><div class="legend-dot" style="background:#60a5fa"></div>Present — Stay &amp; Connect</div>
-      <div class="legend-row"><div class="legend-dot" style="background:#fbbf24"></div>Engaged — Keep It Light</div>
-      <div class="legend-row"><div class="legend-dot" style="background:#f97316"></div>Fading — Wind Down &amp; Close</div>
-      <div class="legend-row"><div class="legend-dot" style="background:#a78bfa"></div>Needs Space — Give Space</div>
+      <div class="legend-row">
+        <div class="legend-dot" style="background:#6ee7b7"></div>
+        <div><strong style="color:#6ee7b7">Energized</strong> — Expand &amp; Open Up<div class="legend-desc">They're fully charged. Go deeper, share more, and let the conversation flow freely.</div></div>
+      </div>
+      <div class="legend-row">
+        <div class="legend-dot" style="background:#60a5fa"></div>
+        <div><strong style="color:#60a5fa">Present</strong> — Stay &amp; Connect<div class="legend-desc">Engaged and available. Match their energy, stay curious, and build on the moment.</div></div>
+      </div>
+      <div class="legend-row">
+        <div class="legend-dot" style="background:#fbbf24"></div>
+        <div><strong style="color:#fbbf24">Engaged</strong> — Keep It Light<div class="legend-desc">Focused but not overflowing. Avoid heavy topics and keep things flowing naturally.</div></div>
+      </div>
+      <div class="legend-row">
+        <div class="legend-dot" style="background:#f97316"></div>
+        <div><strong style="color:#f97316">Fading</strong> — Wind Down &amp; Close<div class="legend-desc">Energy is dipping. Start wrapping up, ease off, and offer natural pauses to breathe.</div></div>
+      </div>
+      <div class="legend-row">
+        <div class="legend-dot" style="background:#a78bfa"></div>
+        <div><strong style="color:#a78bfa">Needs Space</strong> — Give Space<div class="legend-desc">They've hit their limit. Step back, reduce pressure, and let them reset without guilt.</div></div>
+      </div>
     </div>
   </div>
   <!-- Notification tab -->
@@ -1544,30 +1568,18 @@ function drawBatteryIndicator(x, y, battery, state) {
   // ── Signal bars ──
   drawSignalBars(x, barsTop, state);
 
-  // ── Status label + action hint ──
+  // ── Status label ──
   ctx.save();
   ctx.font = '600 12px Space Mono, monospace';
-  const lw = Math.max(ctx.measureText(lvl.label).width, ctx.measureText(lvl.action).width) + 24;
-
-  // Background pill (taller to fit two lines)
+  const lw = ctx.measureText(lvl.label).width + 22;
   ctx.beginPath();
-  ctx.roundRect(x - lw/2, labelCY - 16, lw, 32, 8);
-  ctx.fillStyle = 'rgba(0,0,0,0.68)';
+  ctx.roundRect(x - lw/2, labelCY - 10, lw, 20, 10);
+  ctx.fillStyle = 'rgba(0,0,0,0.62)';
   ctx.fill();
-  ctx.strokeStyle = lvl.color + '44';
-  ctx.lineWidth = 1;
-  ctx.stroke();
-
-  // State label (top line)
   ctx.fillStyle = lvl.color;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText(lvl.label, x, labelCY - 5);
-
-  // Action hint (bottom line, smaller + dimmer)
-  ctx.font = '9px Space Mono, monospace';
-  ctx.fillStyle = lvl.color + 'bb';
-  ctx.fillText(lvl.action, x, labelCY + 9);
+  ctx.fillText(lvl.label, x, labelCY);
   ctx.restore();
 
   // ── Battery shell ──
