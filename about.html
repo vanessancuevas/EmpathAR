@@ -89,7 +89,11 @@
       margin: 0 auto;
       padding: 40px 24px 60px;
       position: relative; z-index: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
     }
+    .about-body > * { width: 100%; }
 
     /* ── Bracketed corners ── */
     .bracketed { position: relative; }
@@ -262,25 +266,35 @@
     /* ── CTA ── */
     .cta-row {
       margin-top: 48px;
-      text-align: center;
+      display: flex;
+      justify-content: center;
     }
     .cta-btn {
       font-family: var(--font-m);
-      font-size: 0.72rem;
-      letter-spacing: 0.14em;
+      font-size: 0.65rem;
+      letter-spacing: 0.18em;
       text-transform: uppercase;
       color: var(--bg);
       background: var(--accent);
-      border: none;
-      padding: 14px 32px;
+      border: 2px solid var(--accent);
+      border-radius: 0;
+      padding: 11px 28px;
       cursor: pointer;
       text-decoration: none;
       display: inline-block;
-      transition: background 0.2s, box-shadow 0.2s;
+      width: 100%;
+      max-width: 280px;
+      text-align: center;
+      transition: background 0.15s, color 0.15s, box-shadow 0.15s;
     }
     .cta-btn:hover {
-      background: #c8faf5;
-      box-shadow: 0 0 24px rgba(0,212,184,0.45);
+      background: transparent;
+      color: var(--accent);
+      box-shadow: 0 0 18px rgba(0,212,184,0.35), inset 0 0 18px rgba(0,212,184,0.08);
+    }
+    .cta-btn:active {
+      background: var(--accent-lo);
+      color: var(--accent);
     }
 
     @media (max-width: 500px) {
