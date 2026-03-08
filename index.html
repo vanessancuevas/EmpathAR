@@ -312,22 +312,21 @@
 
     #legend {
       position: absolute;
-      top: 14px; right: 14px;
+      top: 14px; left: 14px;
       background: rgba(3,13,18,0.82);
       backdrop-filter: blur(8px);
       border: 1px solid var(--accent-bd);
       padding: 10px 12px;
       pointer-events: all;
-      max-width: min(220px, calc(100vw - 28px));
+      max-width: min(320px, calc(100vw - 28px));
       box-sizing: border-box;
     }
 
     .legend-title {
       font-family: var(--font-m);
-      font-size: 0.52rem;
+      font-size: 0.75rem;
       letter-spacing: 0.18em;
       color: var(--accent);
-      text-transform: uppercase;
       margin-bottom: 7px;
       padding-bottom: 5px;
       border-bottom: 1px solid var(--accent-bd);
@@ -337,10 +336,9 @@
       display: flex; align-items: flex-start; gap: 7px;
       margin-bottom: 8px;
       font-family: var(--font-m);
-      font-size: 0.58rem;
+      font-size: 0.75rem;
       color: var(--text);
       letter-spacing: 0.06em;
-      text-transform: uppercase;
     }
 
     .legend-dot {
@@ -350,7 +348,7 @@
     }
 
     .legend-desc {
-      font-size: 0.52rem;
+      font-size: 0.75rem;
       color: #ffffff;
       line-height: 1.5;
       margin-top: 2px;
@@ -514,9 +512,8 @@
         margin-top: 2px;
         color: var(--muted);
         font-family: var(--font-m);
-        font-size: 0.50rem;
+        font-size: 0.625rem;
         letter-spacing: 0.16em;
-        text-transform: uppercase;
       }
       #legend-toggle-icon {
         font-size: 0.65rem;
@@ -538,12 +535,23 @@
         opacity: 0;
         margin-top: 0;
       }
+
+      /* ── Notification/toast/legend font sizes (10px on mobile) ── */
+      #drawer-title,
+      #drawer-empty,
+      .drawer-item-label,
+      .drawer-item-msg,
+      .toast,
+      .toast-label,
+      .legend-title,
+      .legend-row,
+      .legend-desc { font-size: 0.625rem; }
     }
 
-    /* ── Notification tab (top-left trigger) ── */
+    /* ── Notification tab (top-right trigger) ── */
     #notif-tab {
       position: absolute;
-      top: 14px; left: 14px;
+      top: 14px; right: 14px;
       z-index: 5;
       display: flex;
       align-items: center;
@@ -575,15 +583,15 @@
     /* ── Side notification drawer ── */
     #notif-drawer {
       position: fixed;
-      top: 0; left: 0; bottom: 0;
+      top: 0; right: 0; bottom: 0;
       width: min(300px, 85vw);
       z-index: 50;
       background: rgba(3,13,18,0.97);
       backdrop-filter: blur(16px);
-      border-right: 1px solid var(--accent-bd);
+      border-left: 1px solid var(--accent-bd);
       display: flex;
       flex-direction: column;
-      transform: translateX(-100%);
+      transform: translateX(100%);
       transition: transform 0.32s cubic-bezier(0.22,1,0.36,1);
       pointer-events: all;
     }
@@ -599,10 +607,9 @@
     }
     #drawer-title {
       font-family: var(--font-m);
-      font-size: 0.70rem;
+      font-size: 0.75rem;
       letter-spacing: 0.2em;
       color: var(--accent);
-      text-transform: uppercase;
     }
     #drawer-close {
       background: none; border: none;
@@ -622,11 +629,10 @@
     #drawer-empty {
       padding: 40px 16px;
       font-family: var(--font-m);
-      font-size: 0.70rem;
+      font-size: 0.75rem;
       color: var(--muted);
       letter-spacing: 0.1em;
       text-align: center;
-      text-transform: uppercase;
     }
 
     .drawer-item {
@@ -644,9 +650,8 @@
     }
     .drawer-item-label {
       font-family: var(--font-m);
-      font-size: 0.62rem;
+      font-size: 0.75rem;
       letter-spacing: 0.16em;
-      text-transform: uppercase;
     }
     .drawer-item-close {
       background: none; border: none;
@@ -657,7 +662,7 @@
     .drawer-item-close:hover { color: var(--accent); }
     .drawer-item-msg {
       font-family: var(--font-m);
-      font-size: 0.78rem;
+      font-size: 0.75rem;
       color: var(--text);
       line-height: 1.55;
       letter-spacing: 0.03em;
@@ -673,7 +678,7 @@
       gap: 6px;
       align-items: flex-end;
       pointer-events: none;
-      max-width: min(260px, calc(100vw - 16px));
+      max-width: min(320px, calc(100vw - 16px));
     }
 
     .toast {
@@ -684,7 +689,7 @@
       border-right: none;
       padding: 9px 12px 9px 12px;
       font-family: var(--font-m);
-      font-size: 0.60rem;
+      font-size: 0.75rem;
       line-height: 1.5;
       color: var(--text);
       letter-spacing: 0.03em;
@@ -708,8 +713,7 @@
       margin-bottom: 3px; gap: 8px;
     }
     .toast-label {
-      font-size: 0.46rem; letter-spacing: 0.16em;
-      text-transform: uppercase;
+      font-size: 0.75rem; letter-spacing: 0.16em;
     }
     .toast-close {
       background: none; border: none;
@@ -732,7 +736,7 @@
   <div id="legend" class="collapsed">
     <div class="legend-title">Social Battery</div>
     <button id="legend-toggle">
-      <span id="legend-toggle-text">SHOW ALL</span>
+      <span id="legend-toggle-text">Show all</span>
       <span id="legend-toggle-icon">▾</span>
     </button>
     <div id="legend-rows">
@@ -784,7 +788,7 @@
 <div id="landing">
   <!-- Top system bar -->
   <div class="sys-bar">
-    <span class="sys-bar-label">EmpathAR <span style="opacity:0.4">// v1.0</span></span>
+    <span class="sys-bar-label">Empath<span style="color:#c8faf5">AR</span> <span style="opacity:0.4">// v1.0</span></span>
     <a href="/about" style="font-family:var(--font-m);font-size:0.54rem;letter-spacing:0.16em;color:var(--accent);text-decoration:none;text-transform:uppercase;opacity:0.7;position:absolute;left:50%;transform:translateX(-50%);" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.7'">About</a>
     <div class="sys-dots">
       <div class="sys-dot on"></div>
@@ -833,7 +837,7 @@
       <div class="feat-panel bracketed">
         <div class="feat-id">MOD-03</div>
         <span class="feat-icon-char">▣</span>
-        <div class="feat-label">Energy</div>
+        <div class="feat-label">Movement</div>
       </div>
     </div>
 
@@ -951,22 +955,41 @@ function computePostureScore(lm) {
 // Raw blendshape values for debug display
 let _dbgBS = {};
 
+// Geometric frown: mouth corners below nose tip (immune to lip-pout shifting the reference)
+function computeGeoFrown(faceLm) {
+  if (!faceLm || faceLm.length < 400) return 0;
+  const faceHeight = Math.abs(faceLm[152].y - faceLm[10].y);
+  if (faceHeight < 0.01) return 0;
+  // Use nose tip (lm 4) as stable reference — unaffected by mouth movement
+  const noseTipY   = faceLm[4].y;
+  const upperLipY  = faceLm[0].y;  // top of upper lip — neutral corner baseline
+  const neutralY   = upperLipY + (noseTipY - upperLipY) * 0.10; // slightly below upper lip
+  const leftDrop   = faceLm[61].y  - neutralY;
+  const rightDrop  = faceLm[291].y - neutralY;
+  const avgDrop    = (leftDrop + rightDrop) / 2;
+  // Dead zone: ignore small resting deviations, only register intentional frowns
+  const normalized = avgDrop / faceHeight;
+  return Math.max(0, Math.min(1, (normalized - 0.04) * 7));
+}
+
 // Returns { faceScore, jawActivity, angryScore }
-function computeFaceScore(blendshapes) {
+function computeFaceScore(blendshapes, faceLm) {
   if (!blendshapes || !blendshapes[0]) return { faceScore: 0.5, jawActivity: 0, angryScore: 0 };
   const bs = {};
   blendshapes[0].categories.forEach(c => { bs[c.categoryName] = c.score; });
   _dbgBS = bs; // expose for debug panel
 
   const rawSmile = ((bs.mouthSmileLeft  || 0) + (bs.mouthSmileRight  || 0)) / 2;
-  // Frown: dedicated blendshapes are weak in MediaPipe; supplement with mouthPucker (pout/frown)
-  const rawFrown = ((bs.mouthFrownLeft  || 0) + (bs.mouthFrownRight  || 0)) / 2
-                 + (bs.mouthPucker      || 0) * 0.25;
+  const rawFrown = ((bs.mouthFrownLeft  || 0) + (bs.mouthFrownRight  || 0)) / 2;
+  // browDown is reliable for furrowed-brow frowns where mouthFrown blendshapes are weak
+  const rawBrow  = ((bs.browDownLeft    || 0) + (bs.browDownRight    || 0)) / 2;
   const jaw      =   bs.jawOpen         || 0;
 
-  // Amplify — mouthFrown values are naturally tiny; scale to a usable 0–1 range
-  const smile  = Math.min(rawSmile * 4.0, 1);
-  const mFrown = Math.min(rawFrown * 16.0, 1);
+  const smile      = Math.min(rawSmile * 4.0, 1);
+  const blendFrown = Math.min(Math.max(rawFrown * 8.0, rawBrow * 2.5), 1);
+  const geoFrown   = computeGeoFrown(faceLm);
+  // Take whichever signal is strongest
+  const mFrown     = Math.min(Math.max(blendFrown, geoFrown), 1);
 
   // Suppress frown when smiling — physically can't be angry while genuinely smiling
   const netFrown   = Math.max(0, mFrown - smile * 0.9);
@@ -1012,27 +1035,30 @@ function getOrCreateState(idx) {
   return personStates[idx];
 }
 
-const SMOOTH_UP   = 0.07;  // slower to charge
-const SMOOTH_DOWN = 0.14;  // faster to drain
+const SMOOTH_UP   = 0.04;  // slower to charge
+const SMOOTH_DOWN = 0.05;  // faster to drain
 const POS_ALPHA   = 0.40;  // drawing-position EMA — responsive but jitter-free
 
-function updateState(state, poseLm, faceBlends) {
+function updateState(state, poseLm, faceBlends, faceLm) {
   const { postureScore: rawPosture, crossedArms: rawCrossed } = computePostureScore(poseLm);
   const { faceScore: rawFace, jawActivity, angryScore: rawAngry,
-          _smile, _frown, _brow } = computeFaceScore(faceBlends);
-  state._smile = _smile || 0; state._frown = _frown || 0; state._brow = _brow || 0;
+          _smile, _frown, _brow } = computeFaceScore(faceBlends, faceLm);
+  state._smile = _smile || 0; state._brow = _brow || 0;
   const rawMovement = computeMovementScore(poseLm, state.prev);
 
-  state.posture     = state.posture     * 0.90 + rawPosture  * 0.10;
-  state.face        = state.face        * 0.90 + rawFace     * 0.10;
-  state.movement    = state.movement    * 0.88 + rawMovement * 0.12;
+  state.posture     = state.posture     * 0.94 + rawPosture  * 0.06;
+  state.face        = state.face        * 0.94 + rawFace     * 0.06;
+  state.movement    = state.movement    * 0.92 + rawMovement * 0.08;
   // Crossed arms: slow to build, slow to release (sustained posture signal)
-  state.crossedArms = (state.crossedArms || 0) * 0.93 + rawCrossed  * 0.07;
+  state.crossedArms = (state.crossedArms || 0) * 0.95 + rawCrossed  * 0.05;
 
-  // Jaw: fast accumulation, slow decay
-  state.jawActivity = state.jawActivity * 0.75 + jawActivity * 0.25;
-  // Anger: needs sustained frown to trigger, fades quickly when released
-  state.angryScore  = state.angryScore  * 0.85 + rawAngry    * 0.15;
+  // Jaw: moderate smoothing to avoid jitter
+  state.jawActivity = state.jawActivity * 0.85 + jawActivity * 0.15;
+  // Anger/frown: smooth heavily to prevent jitter
+  state.angryScore  = state.angryScore  * 0.92 + rawAngry    * 0.08;
+
+  // Smooth the raw frown reading before it drives triggers
+  state._frown = (state._frown || 0) * 0.88 + (_frown || 0) * 0.12;
 
   // ── Battery formula ──────────────────────────────────────────────────────
   let raw = state.posture * 0.20 + state.face * 0.32 + state.movement * 0.28;
@@ -1058,6 +1084,68 @@ function updateState(state, poseLm, faceBlends) {
   // Asymmetric smoothing: drain snappy, charge gradual
   const s = raw < state.battery ? SMOOTH_DOWN : SMOOTH_UP;
   state.battery   = state.battery * (1 - s) + raw * s;
+
+  const nowMs = performance.now();
+
+  // ── Sustained frown → Needs Space (5 second trigger) ──
+  if (state._frown > 0.45) {
+    if (!state.frownStart) state.frownStart = nowMs;
+    if (nowMs - state.frownStart >= 5000) {
+      state.battery = Math.min(state.battery, 0.10);
+    }
+  } else {
+    state.frownStart = null;
+  }
+
+  // ── Clap detection → max Energized ──
+  // Detect wrist proximity rising edge (hands coming together = one clap)
+  if (poseLm[15] && poseLm[16]) {
+    const dx = poseLm[15].x - poseLm[16].x;
+    const dy = poseLm[15].y - poseLm[16].y;
+    const wristDist = Math.sqrt(dx*dx + dy*dy);
+    const prevDist  = state.prevWristDist ?? 1;
+    if (wristDist < 0.15 && prevDist >= 0.15) {
+      state.clapTimes = (state.clapTimes || []).filter(t => nowMs - t < 2500);
+      state.clapTimes.push(nowMs);
+      if (state.clapTimes.length >= 3) {
+        state.battery   = 1.0;
+        state.clapTimes = [];
+      }
+    }
+    state.prevWristDist = wristDist;
+  }
+
+  // ── Yawning → Fading (wide jaw sustained > 1.5s, distinguishable from talking) ──
+  if (state.jawActivity > 0.60) {
+    if (!state.yawnStart) state.yawnStart = nowMs;
+    if (nowMs - state.yawnStart >= 1500) {
+      state.battery = Math.min(state.battery, 0.35);
+    }
+  } else {
+    state.yawnStart = null;
+  }
+
+  // ── Head prop (wrist near face/chin/cheek, sustained > 2s) → Fading ──
+  // Check proximity to nose (lm 0) and both ears (lm 7, 8) to cover chin/cheek props
+  const faceAnchors = [0, 7, 8].map(i => poseLm[i]).filter(Boolean);
+  if (faceAnchors.length > 0) {
+    const wristNear = [15, 16].some(i => {
+      const w = poseLm[i];
+      if (!w) return false;
+      return faceAnchors.some(anchor => {
+        const dx = w.x - anchor.x, dy = w.y - anchor.y;
+        return Math.sqrt(dx*dx + dy*dy) < 0.28;
+      });
+    });
+    if (wristNear) {
+      if (!state.headPropStart) state.headPropStart = nowMs;
+      if (nowMs - state.headPropStart >= 2000) {
+        state.battery = Math.min(state.battery, 0.35);
+      }
+    } else {
+      state.headPropStart = null;
+    }
+  }
 
   state.isTalking  = state.jawActivity  > 0.22;
   state.isAngry    = needsSpaceDrive    > 0.25;
@@ -1220,7 +1308,11 @@ function updateBadge() {
   notifTab.classList.toggle('has-items', n > 0);
 }
 
-function openDrawer()  { notifDrawer.classList.add('open'); notifOverlay.classList.add('open'); }
+function openDrawer()  {
+  notifDrawer.classList.add('open'); notifOverlay.classList.add('open');
+  // Dismiss all active toasts — feed is now visible
+  for (const entry of notifHistory.values()) dismissToast(entry);
+}
 function closeDrawer() { notifDrawer.classList.remove('open'); notifOverlay.classList.remove('open'); }
 
 notifTab.addEventListener('click', openDrawer);
@@ -1296,19 +1388,21 @@ function addNotif(idx, msg, battery) {
   drawerList.scrollTop = drawerList.scrollHeight;
   updateBadge();
 
-  // ── Active toast bubble (bottom-right) ──
-  const tEl = document.createElement('div');
-  tEl.className = 'toast';
-  tEl.innerHTML =
-    `<div class="toast-header">` +
-      `<span class="toast-label" style="color:${lvl.color}">${pLabel} · ${lLabel}</span>` +
-      `<button class="toast-close">✕</button>` +
-    `</div>${msg}`;
-  tEl.querySelector('.toast-close').addEventListener('click', () => dismissToast(entry));
-  addSwipeToDismiss(tEl, () => dismissToast(entry));
-  toastContainer.appendChild(tEl);
-  entry.toastEl = tEl;
-  requestAnimationFrame(() => requestAnimationFrame(() => tEl.classList.add('in')));
+  // ── Active toast bubble (bottom-right) — skip if drawer is open ──
+  if (!document.getElementById('notif-drawer').classList.contains('open')) {
+    const tEl = document.createElement('div');
+    tEl.className = 'toast';
+    tEl.innerHTML =
+      `<div class="toast-header">` +
+        `<span class="toast-label" style="color:${lvl.color}">${pLabel} · ${lLabel}</span>` +
+        `<button class="toast-close">✕</button>` +
+      `</div>${msg}`;
+    tEl.querySelector('.toast-close').addEventListener('click', () => dismissToast(entry));
+    addSwipeToDismiss(tEl, () => dismissToast(entry));
+    toastContainer.appendChild(tEl);
+    entry.toastEl = tEl;
+    requestAnimationFrame(() => requestAnimationFrame(() => tEl.classList.add('in')));
+  }
 }
 
 // Dismiss all active toasts (not history) for a person when they leave frame
@@ -1399,15 +1493,16 @@ function drawFaceCallout(ax, ay, dx, dy, label, value, color) {
 }
 
 // Draw all face signal labels using pre-smoothed canvas positions
-function drawFaceLabels(pts, blendshapes) {
+function drawFaceLabels(pts, blendshapes, faceLm) {
   const bs = {};
   if (blendshapes && blendshapes[0]) {
     blendshapes[0].categories.forEach(c => { bs[c.categoryName] = c.score; });
   }
 
-  const smile   = Math.min(((bs.mouthSmileLeft || 0) + (bs.mouthSmileRight|| 0)) / 2 * 4.0, 1);
-  const mFrown  = Math.min((((bs.mouthFrownLeft || 0) + (bs.mouthFrownRight|| 0)) / 2 + (bs.mouthPucker || 0) * 0.25) * 16.0, 1);
-  const jawOpen =   bs.jawOpen || 0;
+  const smile      = Math.min(((bs.mouthSmileLeft || 0) + (bs.mouthSmileRight|| 0)) / 2 * 4.0, 1);
+  const blendFrown = Math.min(((bs.mouthFrownLeft || 0) + (bs.mouthFrownRight|| 0)) / 2 * 12.0, 1);
+  const mFrown     = Math.min(Math.max(blendFrown, computeGeoFrown(faceLm)), 1);
+  const jawOpen    =   bs.jawOpen || 0;
 
   drawFaceCallout(pts.fSmileX, pts.fSmileY,  1,  0, 'SMILE',   smile,   lerpColor('#64748b', '#6ee7b7', smile));
   drawFaceCallout(pts.fFrownX, pts.fFrownY, -1,  0, 'FROWN',   mFrown,  lerpColor('#64748b', '#f87171', mFrown));
@@ -1810,8 +1905,9 @@ function detect() {
     const person = trackedPersons[tIdx];
     const pid0   = person.id - 1; // 0-based: person 1 → pid0 0
     const state  = person.state;
-    const blends = faceBlendshapes[poseIdx] ? [faceBlendshapes[poseIdx]] : null;
-    updateState(state, poseLm, blends);
+    const blends  = faceBlendshapes[poseIdx] ? [faceBlendshapes[poseIdx]] : null;
+    const faceLm0 = faceLandmarksList[poseIdx] || null;
+    updateState(state, poseLm, blends, faceLm0);
 
     const battery = state.battery;
     const lvl     = levelFor(battery);
@@ -1873,7 +1969,7 @@ function detect() {
 
     // Face labels use smoothed anchor points
     if (faceLm && faceLm.length >= 400 && sp.fSmileX !== undefined) {
-      drawFaceLabels(sp, faceBlendshapes[poseIdx] ? [faceBlendshapes[poseIdx]] : null);
+      drawFaceLabels(sp, faceBlendshapes[poseIdx] ? [faceBlendshapes[poseIdx]] : null, faceLandmarksList[poseIdx] || null);
     }
     if (poseIdx === 0) updateDebugPanel(state);
   });
@@ -1967,7 +2063,7 @@ skelBtn.addEventListener('click', () => {
 document.getElementById('legend-toggle').addEventListener('click', () => {
   const legend = document.getElementById('legend');
   const isCollapsed = legend.classList.toggle('collapsed');
-  document.getElementById('legend-toggle-text').textContent = isCollapsed ? 'SHOW ALL' : 'COLLAPSE';
+  document.getElementById('legend-toggle-text').textContent = isCollapsed ? 'Show all' : 'Collapse';
 });
 
 function updateDebugPanel() {}
@@ -1992,6 +2088,9 @@ document.getElementById('start-btn').addEventListener('click', async () => {
     errEl.textContent = 'Camera error: ' + err.message;
   }
 });
+
+if (new URLSearchParams(location.search).get('autostart') === '1')
+  document.getElementById('start-btn').click();
 </script>
 </body>
 </html>
