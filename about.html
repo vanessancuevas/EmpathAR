@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>About — EmpathAR</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:        #030d12;
+      --surface:   #071820;
+      --accent:    #00d4b8;
+      --accent-lo: rgba(0,212,184,0.10);
+      --accent-bd: rgba(0,212,184,0.28);
+      --text:      #b8ede8;
+      --muted:     rgba(184,237,232,0.38);
+      --font-d:    'Orbitron', monospace;
+      --font-m:    'Space Mono', monospace;
+    }
+
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: var(--bg);
+      font-family: var(--font-m);
+      color: var(--text);
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    body::after {
+      content: '';
+      position: fixed; inset: 0;
+      background-image:
+        linear-gradient(rgba(0,212,184,0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,212,184,0.04) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    p, div, span, h1, h2, h3 { overflow-wrap: break-word; word-break: break-word; }
+
+    /* ── Sys bar ── */
+    .sys-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 20px;
+      border-bottom: 1px solid var(--accent-bd);
+      flex-shrink: 0;
+      position: relative; z-index: 1;
+    }
+    .sys-bar.bottom { border-bottom: none; border-top: 1px solid var(--accent-bd); margin-top: auto; }
+
+    .sys-bar-label {
+      font-family: var(--font-m);
+      font-size: 0.6rem;
+      letter-spacing: 0.18em;
+      color: var(--accent);
+      text-transform: uppercase;
+    }
+
+    .sys-dots { display: flex; gap: 6px; align-items: center; }
+    .sys-dot  { width: 7px; height: 7px; border-radius: 50%; background: var(--accent-bd); }
+    .sys-dot.on { background: var(--accent); box-shadow: 0 0 6px var(--accent); }
+
+    /* ── Back link ── */
+    .back-link {
+      font-family: var(--font-m);
+      font-size: 0.58rem;
+      letter-spacing: 0.14em;
+      color: var(--accent);
+      text-decoration: none;
+      text-transform: uppercase;
+      opacity: 0.7;
+      transition: opacity 0.2s;
+    }
+    .back-link:hover { opacity: 1; }
+
+    /* ── Page content ── */
+    .about-body {
+      flex: 1;
+      max-width: 680px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 40px 24px 60px;
+      position: relative; z-index: 1;
+    }
+
+    /* ── Bracketed corners ── */
+    .bracketed { position: relative; }
+    .bracketed::before {
+      content: '';
+      position: absolute; inset: -1px;
+      background:
+        linear-gradient(var(--accent),var(--accent)) top left    / 14px 2px no-repeat,
+        linear-gradient(var(--accent),var(--accent)) top left    / 2px 14px no-repeat,
+        linear-gradient(var(--accent),var(--accent)) top right   / 14px 2px no-repeat,
+        linear-gradient(var(--accent),var(--accent)) top right   / 2px 14px no-repeat,
+        linear-gradient(var(--accent),var(--accent)) bottom left / 14px 2px no-repeat,
+        linear-gradient(var(--accent),var(--accent)) bottom left / 2px 14px no-repeat,
+        linear-gradient(var(--accent),var(--accent)) bottom right/ 14px 2px no-repeat,
+        linear-gradient(var(--accent),var(--accent)) bottom right/ 2px 14px no-repeat;
+      pointer-events: none;
+    }
+
+    /* ── Hero ── */
+    .about-hero {
+      margin-bottom: 48px;
+    }
+    .eyebrow {
+      font-size: 0.52rem;
+      letter-spacing: 0.22em;
+      color: var(--muted);
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+    .eyebrow span { color: var(--accent); margin: 0 6px; }
+    h1 {
+      font-family: var(--font-d);
+      font-size: clamp(1.8rem, 6vw, 2.8rem);
+      font-weight: 900;
+      color: var(--text);
+      line-height: 1.1;
+      margin-bottom: 16px;
+    }
+    .ar-accent { color: #c8faf5; }
+    .hero-desc {
+      font-size: 0.78rem;
+      color: #c8faf5;
+      line-height: 1.8;
+      max-width: 540px;
+    }
+
+    /* ── Divider ── */
+    .divider {
+      border: none;
+      border-top: 1px solid var(--accent-bd);
+      margin: 36px 0;
+    }
+
+    /* ── Section ── */
+    .section { margin-bottom: 40px; }
+    .section-label {
+      font-size: 0.48rem;
+      letter-spacing: 0.22em;
+      color: var(--accent);
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+    .section-title {
+      font-family: var(--font-d);
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 12px;
+      letter-spacing: 0.06em;
+    }
+    .section p {
+      font-size: 0.72rem;
+      color: var(--text);
+      line-height: 1.85;
+      opacity: 0.85;
+    }
+    .section p + p { margin-top: 12px; }
+
+    /* ── Signal cards ── */
+    .signal-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-top: 16px;
+    }
+    .signal-card {
+      background: var(--accent-lo);
+      border: 1px solid var(--accent-bd);
+      padding: 16px 12px;
+      text-align: center;
+    }
+    .signal-icon {
+      font-family: var(--font-d);
+      font-size: 1.1rem;
+      color: var(--accent);
+      display: block;
+      margin-bottom: 6px;
+    }
+    .signal-id {
+      font-size: 0.44rem;
+      letter-spacing: 0.14em;
+      color: var(--muted);
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+    .signal-name {
+      font-size: 0.54rem;
+      letter-spacing: 0.10em;
+      color: var(--text);
+      text-transform: uppercase;
+    }
+    .signal-desc {
+      font-size: 0.58rem;
+      color: var(--muted);
+      line-height: 1.5;
+      margin-top: 6px;
+    }
+
+    /* ── Battery levels ── */
+    .levels { margin-top: 16px; display: flex; flex-direction: column; gap: 10px; }
+    .level-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 12px 14px;
+      background: var(--accent-lo);
+      border: 1px solid var(--accent-bd);
+    }
+    .level-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      margin-top: 4px;
+    }
+    .level-info { flex: 1; min-width: 0; }
+    .level-name {
+      font-size: 0.6rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .level-action {
+      font-size: 0.54rem;
+      color: var(--muted);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin-top: 2px;
+    }
+    .level-desc {
+      font-size: 0.56rem;
+      color: var(--text);
+      line-height: 1.55;
+      margin-top: 4px;
+      opacity: 0.75;
+    }
+
+    /* ── Privacy block ── */
+    .privacy-box {
+      background: var(--accent-lo);
+      border: 1px solid var(--accent-bd);
+      padding: 20px;
+      margin-top: 16px;
+    }
+    .privacy-box p {
+      font-size: 0.68rem;
+      line-height: 1.8;
+      opacity: 0.85;
+    }
+
+    /* ── CTA ── */
+    .cta-row {
+      margin-top: 48px;
+      text-align: center;
+    }
+    .cta-btn {
+      font-family: var(--font-m);
+      font-size: 0.72rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--bg);
+      background: var(--accent);
+      border: none;
+      padding: 14px 32px;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-block;
+      transition: background 0.2s, box-shadow 0.2s;
+    }
+    .cta-btn:hover {
+      background: #c8faf5;
+      box-shadow: 0 0 24px rgba(0,212,184,0.45);
+    }
+
+    @media (max-width: 500px) {
+      .signal-grid { grid-template-columns: 1fr 1fr; }
+      .signal-grid .signal-card:last-child { grid-column: span 2; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top bar -->
+  <div class="sys-bar">
+    <span class="sys-bar-label">Empath<span style="color:#c8faf5">AR</span> <span style="opacity:0.4">// About</span></span>
+    <div class="sys-dots">
+      <div class="sys-dot on"></div>
+      <div class="sys-dot on"></div>
+      <div class="sys-dot"></div>
+    </div>
+  </div>
+
+  <div class="about-body">
+
+    <!-- Hero -->
+    <div class="about-hero">
+      <div class="eyebrow">System<span>//</span>Social Intelligence Layer</div>
+      <h1>Empath<span class="ar-accent">AR</span></h1>
+      <p class="hero-desc">
+        A real-time augmented reality tool that reads body language signals through your camera and renders a live Social Battery overlay — giving you a layer of social awareness that was never visible before.
+      </p>
+    </div>
+
+    <hr class="divider">
+
+    <!-- What it is -->
+    <div class="section">
+      <div class="section-label">Overview // What It Is</div>
+      <div class="section-title">The Problem We're Solving</div>
+      <p>Most of social intelligence is invisible. We read signals unconsciously — crossed arms, a fading smile, a jaw that won't stop moving — but rarely do we act on them in time. We miss the moment someone checks out. We talk past the point they've already left the conversation.</p>
+      <p>EmpathAR makes those signals visible, in real time, as an AR overlay rendered directly over the people in your camera view. It doesn't tell you what to feel. It tells you what's already happening.</p>
+    </div>
+
+    <hr class="divider">
+
+    <!-- How it works -->
+    <div class="section">
+      <div class="section-label">System // How It Works</div>
+      <div class="section-title">Three Signals. One Battery.</div>
+      <p>The app uses Google MediaPipe — an on-device machine learning framework — to run two models simultaneously: a pose landmarker and a face landmarker. No data leaves your device.</p>
+
+      <div class="signal-grid" style="margin-top:20px">
+        <div class="signal-card bracketed">
+          <span class="signal-icon">⬡</span>
+          <div class="signal-id">MOD-01</div>
+          <div class="signal-name">Posture</div>
+          <div class="signal-desc">Open vs. closed body position. Crossed arms, slouch, and shoulder angle are tracked across 33 body landmarks.</div>
+        </div>
+        <div class="signal-card bracketed">
+          <span class="signal-icon">◈</span>
+          <div class="signal-id">MOD-02</div>
+          <div class="signal-name">Expression</div>
+          <div class="signal-desc">52 facial blendshapes capture smile intensity, frown depth, and jaw activity — distinguishing engagement from withdrawal.</div>
+        </div>
+        <div class="signal-card bracketed">
+          <span class="signal-icon">▣</span>
+          <div class="signal-id">MOD-03</div>
+          <div class="signal-name">Energy</div>
+          <div class="signal-desc">Movement velocity across key joints estimates physical presence — from stillness to animated engagement.</div>
+        </div>
+      </div>
+
+      <p style="margin-top:20px">These three signals are weighted and blended into a single 0–100% Social Battery score using an asymmetric smoothing algorithm — charge is gradual, drain is immediate — mirroring how social energy actually works.</p>
+    </div>
+
+    <hr class="divider">
+
+    <!-- The five states -->
+    <div class="section">
+      <div class="section-label">States // The Five Levels</div>
+      <div class="section-title">What the Battery Tells You</div>
+      <p>The battery maps to five named states, each with a recommended action.</p>
+
+      <div class="levels">
+        <div class="level-row bracketed">
+          <div class="level-dot" style="background:#6ee7b7"></div>
+          <div class="level-info">
+            <div class="level-name" style="color:#6ee7b7">✦ Energized</div>
+            <div class="level-action">Expand &amp; Open Up</div>
+            <div class="level-desc">Fully charged. Go deeper, share more, and let the conversation flow freely.</div>
+          </div>
+        </div>
+        <div class="level-row bracketed">
+          <div class="level-dot" style="background:#60a5fa"></div>
+          <div class="level-info">
+            <div class="level-name" style="color:#60a5fa">● Present</div>
+            <div class="level-action">Stay &amp; Connect</div>
+            <div class="level-desc">Engaged and available. Match their energy, stay curious, and build on the moment.</div>
+          </div>
+        </div>
+        <div class="level-row bracketed">
+          <div class="level-dot" style="background:#fbbf24"></div>
+          <div class="level-info">
+            <div class="level-name" style="color:#fbbf24">◐ Engaged</div>
+            <div class="level-action">Keep It Light</div>
+            <div class="level-desc">Focused but not overflowing. Avoid heavy topics and keep things flowing naturally.</div>
+          </div>
+        </div>
+        <div class="level-row bracketed">
+          <div class="level-dot" style="background:#f97316"></div>
+          <div class="level-info">
+            <div class="level-name" style="color:#f97316">○ Fading</div>
+            <div class="level-action">Wind Down &amp; Close</div>
+            <div class="level-desc">Energy is dipping. Start wrapping up, ease off, and offer natural pauses to breathe.</div>
+          </div>
+        </div>
+        <div class="level-row bracketed">
+          <div class="level-dot" style="background:#a78bfa"></div>
+          <div class="level-info">
+            <div class="level-name" style="color:#a78bfa">↓ Needs Space</div>
+            <div class="level-action">Give Space</div>
+            <div class="level-desc">They've hit their limit. Step back, reduce pressure, and let them reset without guilt.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <hr class="divider">
+
+    <!-- Person tracking -->
+    <div class="section">
+      <div class="section-label">Identity // Person Tracking</div>
+      <div class="section-title">Who Is Who</div>
+      <p>Each person detected is assigned a persistent label — P1, P2, P3 — that survives them leaving and re-entering the frame. The system identifies returning individuals by sampling the average colour of their upper torso (shirt) and comparing it to stored signatures. The count only ever goes up: new shirt, new number.</p>
+      <p>Multiple people can be tracked simultaneously, each with their own independent battery, state history, and contextual tips delivered as toast notifications.</p>
+    </div>
+
+    <hr class="divider">
+
+    <!-- Privacy -->
+    <div class="section">
+      <div class="section-label">Privacy // Data &amp; Security</div>
+      <div class="section-title">Everything Stays On Device</div>
+      <div class="privacy-box bracketed">
+        <p>EmpathAR runs entirely in your browser using WebGL and WebAssembly. No video, no images, no biometric data is ever transmitted to a server. The camera feed is processed locally in real time and immediately discarded — frame by frame. There is no storage, no logging, and no account required. The only data that exists is what you see on screen.</p>
+      </div>
+    </div>
+
+    <hr class="divider">
+
+    <!-- CTA -->
+    <div class="cta-row">
+      <a href="/" class="cta-btn">[ Launch EmpathAR ]</a>
+    </div>
+
+  </div>
+
+  <!-- Bottom bar -->
+  <div class="sys-bar bottom">
+    <a href="/" class="back-link">← Back to App</a>
+    <span class="sys-bar-label" style="opacity:0.4">MediaPipe + WebGL // On-Device</span>
+  </div>
+
+</body>
+</html>
