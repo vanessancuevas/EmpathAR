@@ -318,6 +318,8 @@
       border: 1px solid var(--accent-bd);
       padding: 10px 12px;
       pointer-events: all;
+      max-width: min(220px, calc(100vw - 28px));
+      box-sizing: border-box;
     }
 
     .legend-title {
@@ -352,6 +354,8 @@
       line-height: 1.5;
       margin-top: 2px;
       letter-spacing: 0.02em;
+      word-break: break-word;
+      overflow-wrap: break-word;
     }
 
     .hud-btn {
@@ -738,7 +742,7 @@
   <div id="legend" class="collapsed">
     <div class="legend-title">Social Battery</div>
     <button id="legend-toggle">
-      Social Battery
+      <span id="legend-toggle-text">Expand</span>
       <span id="legend-toggle-icon">▾</span>
     </button>
     <div id="legend-rows">
@@ -1857,7 +1861,9 @@ skelBtn.addEventListener('click', () => {
 
 // Legend accordion (mobile only — button is hidden via CSS on desktop)
 document.getElementById('legend-toggle').addEventListener('click', () => {
-  document.getElementById('legend').classList.toggle('collapsed');
+  const legend = document.getElementById('legend');
+  const isCollapsed = legend.classList.toggle('collapsed');
+  document.getElementById('legend-toggle-text').textContent = isCollapsed ? 'Expand' : 'Close';
 });
 
 const debugPanel   = document.getElementById('debug-panel');
