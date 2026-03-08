@@ -297,7 +297,7 @@
 
     #status {
       position: absolute;
-      top: 14px; left: 50%; transform: translateX(-50%);
+      bottom: 24px; left: 14px;
       background: rgba(3,13,18,0.8);
       backdrop-filter: blur(8px);
       border: 1px solid var(--accent-bd);
@@ -312,7 +312,7 @@
 
     #legend {
       position: absolute;
-      bottom: 24px; left: 14px;
+      top: 14px; right: 14px;
       background: rgba(3,13,18,0.82);
       backdrop-filter: blur(8px);
       border: 1px solid var(--accent-bd);
@@ -381,25 +381,6 @@
       position: absolute; bottom: 24px; right: 14px;
     }
 
-    #toggle-debug {
-      position: absolute; top: 14px; right: 14px;
-    }
-
-    #debug-panel {
-      position: absolute; top: 46px; right: 14px;
-      background: rgba(3,13,18,0.92);
-      border: 1px solid var(--accent-bd);
-      padding: 8px 12px;
-      font-family: var(--font-m);
-      font-size: 0.58rem;
-      color: var(--muted);
-      line-height: 2;
-      display: none;
-      min-width: 148px;
-      letter-spacing: 0.06em;
-    }
-    #debug-panel.visible { display: block; }
-    #debug-panel span { float: right; margin-left: 12px; color: var(--accent); }
 
     /* ── Radar ── */
     .radar-wrap {
@@ -795,14 +776,6 @@
   <div id="toast-container"></div>
 
   <button id="toggle-skeleton" class="hud-btn">Skeleton off</button>
-  <button id="toggle-debug" class="hud-btn">Debug</button>
-  <div id="debug-panel">
-    <div>Face model <span id="dbg-face-model">loading…</span></div>
-    <div>Smile <span id="dbg-smile">—</span></div>
-    <div>Frown <span id="dbg-frown">—</span></div>
-    <div>JawOpen <span id="dbg-jaw">—</span></div>
-    <div>Battery <span id="dbg-battery">—</span></div>
-  </div>
 </div>
 
 <div id="landing">
@@ -1872,33 +1845,7 @@ document.getElementById('legend-toggle').addEventListener('click', () => {
   document.getElementById('legend-toggle-text').textContent = isCollapsed ? 'Show All' : 'Collapse';
 });
 
-const debugPanel   = document.getElementById('debug-panel');
-const toggleDebug  = document.getElementById('toggle-debug');
-const dbgFaceModel = document.getElementById('dbg-face-model');
-const dbgSmile     = document.getElementById('dbg-smile');
-const dbgFrown     = document.getElementById('dbg-frown');
-const dbgJaw       = document.getElementById('dbg-jaw');
-const dbgBattery   = document.getElementById('dbg-battery');
-let   showDebug    = false;
-
-toggleDebug.addEventListener('click', () => {
-  showDebug = !showDebug;
-  debugPanel.classList.toggle('visible', showDebug);
-});
-
-function updateDebugPanel(state) {
-  if (!showDebug) return;
-  dbgFaceModel.textContent = faceLandmarker ? '✓' : 'loading';
-  dbgFaceModel.style.color = faceLandmarker ? '#6ee7b7' : '#fbbf24';
-  const fmt = v => v != null ? (v * 100).toFixed(0) + '%' : '—';
-  dbgSmile.textContent   = fmt(state?._smile);
-  dbgFrown.textContent   = fmt(state?._frown);
-  dbgJaw.textContent     = fmt(state?.jawActivity);
-  dbgBattery.textContent = fmt(state?.battery);
-  dbgSmile.style.color   = state?._smile  > 0.2 ? '#6ee7b7' : '#94a3b8';
-  dbgFrown.style.color   = state?._frown  > 0.2 ? '#f87171' : '#94a3b8';
-  dbgJaw.style.color     = state?.jawActivity > 0.2 ? '#a78bfa' : '#94a3b8';
-}
+function updateDebugPanel() {}
 
 document.getElementById('start-btn').addEventListener('click', async () => {
   // iOS orientation permission
