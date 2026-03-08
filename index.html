@@ -489,7 +489,9 @@
     #legend-toggle {
       display: none;
     }
+    .mobile-break { display: none; }
     @media (max-width: 768px) {
+      .mobile-break { display: block; }
       .landing-body {
         padding-top: 48px;
         justify-content: flex-start;
@@ -858,7 +860,7 @@
 
   <!-- Bottom system bar -->
   <div class="sys-bar bottom">
-    <span class="sys-bar-label">Camera required <span style="color:#c8faf5">// MediaPipe + WebGL</span></span>
+    <span class="sys-bar-label">Camera required <br class="mobile-break"><span style="color:#c8faf5">// MediaPipe + WebGL</span></span>
     <span class="sys-bar-label" style="color:#c8faf5;white-space:nowrap">SECURE</span>
   </div>
 </div>
