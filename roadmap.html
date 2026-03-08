@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Roadmap — EmpathAR</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:        #030d12;
+      --surface:   #071820;
+      --accent:    #00d4b8;
+      --accent-lo: rgba(0,212,184,0.10);
+      --accent-bd: rgba(0,212,184,0.28);
+      --text:      #b8ede8;
+      --muted:     rgba(184,237,232,0.38);
+      --font-d:    'Orbitron', monospace;
+      --font-m:    'Space Mono', monospace;
+    }
+
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: var(--bg);
+      font-family: var(--font-m);
+      color: var(--text);
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    body::after {
+      content: '';
+      position: fixed; inset: 0;
+      background-image:
+        linear-gradient(rgba(0,212,184,0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,212,184,0.04) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    p, div, span, h1, h2, h3 { overflow-wrap: break-word; word-break: break-word; }
+
+    .sys-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 24px;
+      border-bottom: 1px solid var(--accent-bd);
+      position: relative; z-index: 1;
+      flex-shrink: 0;
+    }
+    .sys-bar.bottom {
+      border-bottom: none;
+      border-top: 1px solid var(--accent-bd);
+      margin-top: auto;
+    }
+    .sys-bar-label {
+      font-family: var(--font-m);
+      font-size: 0.6rem;
+      letter-spacing: 0.18em;
+      color: var(--accent);
+      text-transform: uppercase;
+    }
+    .sys-bar-label .ar-light { color: #c8faf5; }
+    .back-link {
+      font-family: var(--font-m);
+      font-size: 0.55rem;
+      letter-spacing: 0.12em;
+      color: var(--muted);
+      text-decoration: none;
+      text-transform: uppercase;
+    }
+    .back-link:hover { color: var(--accent); }
+
+    .roadmap-body {
+      flex: 1;
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 40px 24px 60px;
+      position: relative; z-index: 1;
+      width: 100%;
+    }
+
+    .section { margin-bottom: 48px; }
+    .section-label {
+      font-family: var(--font-m);
+      font-size: 0.52rem;
+      letter-spacing: 0.22em;
+      color: var(--accent);
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+    .section-title {
+      font-family: var(--font-d);
+      font-size: clamp(1.2rem, 4vw, 1.8rem);
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 20px;
+      line-height: 1.2;
+    }
+    p {
+      font-size: 0.75rem;
+      line-height: 1.8;
+      color: var(--text);
+      margin-bottom: 14px;
+    }
+    hr.divider {
+      border: none;
+      border-top: 1px solid var(--accent-bd);
+      margin: 40px 0;
+    }
+
+    /* Phase rows */
+    .phase-list { display: flex; flex-direction: column; gap: 16px; }
+    .phase {
+      position: relative;
+      border: 1px solid var(--accent-bd);
+      background: rgba(7,24,32,0.6);
+      padding: 16px 20px;
+    }
+    .phase::before, .phase::after,
+    .phase > .br::before, .phase > .br::after {
+      content: ''; position: absolute;
+      width: 10px; height: 10px;
+      border-color: var(--accent);
+      border-style: solid;
+    }
+    .phase::before  { top: -1px;    left: -1px;  border-width: 1px 0 0 1px; }
+    .phase::after   { top: -1px;    right: -1px; border-width: 1px 1px 0 0; }
+    .phase > .br::before { bottom: -1px; left: -1px;  border-width: 0 0 1px 1px; }
+    .phase > .br::after  { bottom: -1px; right: -1px; border-width: 0 1px 1px 0; }
+
+    .phase-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+    .phase-tag {
+      font-family: var(--font-m);
+      font-size: 0.48rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      padding: 2px 8px;
+      border-radius: 2px;
+      flex-shrink: 0;
+    }
+    .phase-tag.shipped  { background: rgba(110,231,183,0.15); color: #6ee7b7; border: 1px solid rgba(110,231,183,0.3); }
+    .phase-tag.current  { background: rgba(0,212,184,0.15);   color: var(--accent); border: 1px solid var(--accent-bd); }
+    .phase-tag.next     { background: rgba(96,165,250,0.12);  color: #60a5fa; border: 1px solid rgba(96,165,250,0.3); }
+    .phase-tag.future   { background: rgba(167,139,250,0.12); color: #a78bfa; border: 1px solid rgba(167,139,250,0.3); }
+
+    .phase-title {
+      font-family: var(--font-d);
+      font-size: 0.75rem;
+      color: var(--text);
+      letter-spacing: 0.08em;
+    }
+    .phase-items {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .phase-items li {
+      font-size: 0.70rem;
+      color: var(--text);
+      line-height: 1.5;
+      padding-left: 14px;
+      position: relative;
+    }
+    .phase-items li::before {
+      content: '—';
+      position: absolute;
+      left: 0;
+      color: var(--muted);
+    }
+    .phase-items li.done { color: var(--muted); text-decoration: line-through; }
+
+    .cta-row { text-align: center; margin-top: 48px; }
+    .cta-btn {
+      display: inline-block;
+      font-family: var(--font-m);
+      font-size: 0.7rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      text-decoration: none;
+      color: var(--bg);
+      background: var(--accent);
+      padding: 14px 32px;
+      cursor: pointer;
+    }
+    .cta-btn:hover { background: #c8faf5; }
+  </style>
+</head>
+<body>
+
+  <div class="sys-bar">
+    <span class="sys-bar-label">Empath<span class="ar-light">AR</span> <span style="opacity:0.4">// Roadmap</span></span>
+  </div>
+
+  <div class="roadmap-body">
+
+    <div class="section">
+      <div class="section-label">What's Next // Product Roadmap</div>
+      <div class="section-title">Where We're Going.</div>
+      <p>EmpathAR is a live prototype built for the Creative Hackathon. This roadmap outlines what's shipped, what's in progress, and where the product goes next.</p>
+    </div>
+
+    <hr class="divider">
+
+    <div class="section">
+      <div class="section-label">Phases</div>
+      <div class="phase-list">
+
+        <div class="phase"><div class="br"></div>
+          <div class="phase-header">
+            <span class="phase-tag shipped">Shipped</span>
+            <span class="phase-title">v1.0 — Core AR Engine</span>
+          </div>
+          <ul class="phase-items">
+            <li class="done">Real-time pose + face landmarking via MediaPipe</li>
+            <li class="done">Social Battery score (posture, expression, movement)</li>
+            <li class="done">Five battery states with contextual tip feed</li>
+            <li class="done">Multi-person tracking with persistent labels</li>
+            <li class="done">Gesture detection: clapping, frowning, yawning, head prop</li>
+            <li class="done">On-device only — zero data transmitted</li>
+          </ul>
+        </div>
+
+        <div class="phase"><div class="br"></div>
+          <div class="phase-header">
+            <span class="phase-tag current">In Progress</span>
+            <span class="phase-title">v1.1 — Signal Calibration</span>
+          </div>
+          <ul class="phase-items">
+            <li>Per-user baseline calibration for frown and smile sensitivity</li>
+            <li>Improved lighting compensation for face landmarking</li>
+            <li>Tip relevance scoring to reduce repeated suggestions</li>
+            <li>Mobile layout polish and performance optimisation</li>
+          </ul>
+        </div>
+
+        <div class="phase"><div class="br"></div>
+          <div class="phase-header">
+            <span class="phase-tag next">Next</span>
+            <span class="phase-title">v1.2 — Session Memory</span>
+          </div>
+          <ul class="phase-items">
+            <li>Session summary: battery trends over time per person</li>
+            <li>Exportable session report (PDF / share link)</li>
+            <li>Configurable alert thresholds per user</li>
+            <li>Haptic feedback on state change (mobile)</li>
+          </ul>
+        </div>
+
+        <div class="phase"><div class="br"></div>
+          <div class="phase-header">
+            <span class="phase-tag future">Future</span>
+            <span class="phase-title">v2.0 — Multiplayer & API</span>
+          </div>
+          <ul class="phase-items">
+            <li>Group dynamics mode: room-level energy heatmap</li>
+            <li>Integrations: Zoom, Meet, Teams overlay via browser extension</li>
+            <li>EmpathAR SDK for third-party applications</li>
+            <li>Opt-in anonymised research dataset for social signal models</li>
+          </ul>
+        </div>
+
+      </div>
+    </div>
+
+    <hr class="divider">
+
+    <div class="cta-row">
+      <a href="/?autostart=1" class="cta-btn">[ Launch EmpathAR ]</a>
+    </div>
+
+  </div>
+
+  <div class="sys-bar bottom">
+    <a href="/" class="back-link">← Back to App</a>
+    <span class="sys-bar-label" style="opacity:0.4">MediaPipe + WebGL // On-Device</span>
+  </div>
+
+</body>
+</html>
