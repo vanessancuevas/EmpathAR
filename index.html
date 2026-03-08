@@ -660,6 +660,12 @@
       font-family: monospace; line-height: 1; flex-shrink: 0;
     }
     .drawer-item-close:hover { color: var(--accent); }
+    .drawer-item-time {
+      font-family: var(--font-m);
+      font-size: 0.60rem;
+      color: var(--muted);
+      letter-spacing: 0.06em;
+    }
     .drawer-item-msg {
       font-family: var(--font-m);
       font-size: 0.75rem;
@@ -789,12 +795,8 @@
   <!-- Top system bar -->
   <div class="sys-bar">
     <span class="sys-bar-label">Empath<span style="color:#c8faf5">AR</span> <span style="opacity:0.4">// v1.0</span></span>
-    <a href="/about" style="font-family:var(--font-m);font-size:0.54rem;letter-spacing:0.16em;color:var(--accent);text-decoration:none;text-transform:uppercase;opacity:0.7;position:absolute;left:50%;transform:translateX(-50%);" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.7'">About</a>
-    <div class="sys-dots">
-      <div class="sys-dot on"></div>
-      <div class="sys-dot on"></div>
-      <div class="sys-dot"></div>
-    </div>
+    <a href="/about" style="font-family:var(--font-m);font-size:0.5rem;letter-spacing:0.12em;color:#030d12;background:#00d4b8;font-weight:700;text-decoration:none;text-transform:uppercase;padding:3px 8px;border-radius:2px;line-height:1;display:inline-block;margin-left:8px;">About</a>
+    <div style="flex:1"></div>
   </div>
 
   <!-- Main content -->
@@ -1073,10 +1075,14 @@ function updateState(state, poseLm, faceBlends, faceLm) {
   const talkDrain = state.jawActivity * Math.max(0.2, 1 - state._smile * 1.2);
   raw -= talkDrain * 0.28;
 
-  // Needs Space: sustained frown OR crossed arms → pull battery toward floor
-  const needsSpaceDrive = Math.max(state.angryScore, state.crossedArms);
-  if (needsSpaceDrive > 0.22) {
-    const pull = Math.min((needsSpaceDrive - 0.22) / 0.28, 1.0);
+  // Individual signals: mild drain on their own
+  raw -= state.angryScore * 0.12;
+  raw -= state.crossedArms * 0.10;
+
+  // Needs Space: requires BOTH crossed arms AND frown together → strong pull toward floor
+  const needsSpaceDrive = state.angryScore * state.crossedArms * 16;
+  if (needsSpaceDrive > 0.18) {
+    const pull = Math.min((needsSpaceDrive - 0.18) / 0.32, 1.0);
     raw = raw * (1 - pull * 0.88) + 0.04 * (pull * 0.88);
   }
 
@@ -1149,7 +1155,7 @@ function updateState(state, poseLm, faceBlends, faceLm) {
   }
 
   state.isTalking  = state.jawActivity  > 0.22;
-  state.isAngry    = needsSpaceDrive    > 0.25;
+  state.isAngry    = needsSpaceDrive    > 0.18;
   state.prev       = poseLm.map(l => ({ ...l }));
   return state;
 }
@@ -1309,6 +1315,18 @@ function updateBadge() {
   notifTab.classList.toggle('has-items', n > 0);
 }
 
+function formatAge(ts) {
+  const s = Math.floor((Date.now() - ts) / 1000);
+  if (s < 60)  return 'just now';
+  if (s < 3600) return `${Math.floor(s / 60)}m ago`;
+  return `${Math.floor(s / 3600)}h ago`;
+}
+setInterval(() => {
+  document.querySelectorAll('.drawer-item-time[data-ts]').forEach(el => {
+    el.textContent = formatAge(+el.dataset.ts);
+  });
+}, 30000);
+
 function openDrawer()  {
   notifDrawer.classList.add('open'); notifOverlay.classList.add('open');
   // Dismiss all active toasts — feed is now visible
@@ -1369,7 +1387,8 @@ function addNotif(idx, msg, battery) {
   const lvl    = levelFor(battery);
   const pLabel = `P${idx + 1}`;
   const lLabel = levelKey(battery);
-  const entry  = { id, idx, pLabel, lLabel, color: lvl.color, msg, drawerEl: null, toastEl: null };
+  const ts     = Date.now();
+  const entry  = { id, idx, pLabel, lLabel, color: lvl.color, msg, ts, drawerEl: null, toastEl: null };
   notifHistory.set(id, entry);
   if (!personIds[idx]) personIds[idx] = new Set();
   personIds[idx].add(id);
@@ -1381,6 +1400,7 @@ function addNotif(idx, msg, battery) {
   dEl.innerHTML =
     `<div class="drawer-item-header">` +
       `<span class="drawer-item-label" style="color:${lvl.color}">${pLabel} · ${lLabel}</span>` +
+      `<span class="drawer-item-time" data-ts="${ts}">just now</span>` +
       `<button class="drawer-item-close">✕</button>` +
     `</div><div class="drawer-item-msg">${msg}</div>`;
   dEl.querySelector('.drawer-item-close').addEventListener('click', () => removeById(id));
