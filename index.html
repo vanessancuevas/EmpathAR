@@ -362,7 +362,7 @@
       background: rgba(3,13,18,0.82);
       backdrop-filter: blur(8px);
       border: 1px solid var(--accent-bd);
-      color: var(--muted);
+      color: #c8faf5;
       font-family: var(--font-m);
       font-size: 0.58rem;
       letter-spacing: 0.12em;
@@ -511,7 +511,7 @@
         cursor: pointer;
         padding: 5px 0 0;
         margin-top: 2px;
-        color: var(--muted);
+        color: #c8faf5;
         font-family: var(--font-m);
         font-size: 0.625rem;
         letter-spacing: 0.16em;
@@ -519,7 +519,10 @@
       #legend-toggle-icon {
         font-size: 0.65rem;
         transition: transform 0.2s;
-        color: var(--muted);
+        color: #c8faf5;
+      }
+      #legend {
+        max-width: min(180px, calc(100vw - 120px));
       }
       #legend.collapsed #legend-toggle-icon {
         transform: rotate(-90deg);
