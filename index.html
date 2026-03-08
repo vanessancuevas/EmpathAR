@@ -1125,19 +1125,20 @@ function updateState(state, poseLm, faceBlends, faceLm) {
     state.yawnStart = null;
   }
 
-  // ── Head prop (wrist near face/chin/cheek, sustained > 2s) → Fading ──
-  // Check proximity to nose (lm 0) and both ears (lm 7, 8) to cover chin/cheek props
+  // ── Head prop (hand near face, sustained > 2s) → Fading ──
+  // Use wrists + fingertip landmarks (pinky 17/18, index 19/20) — fingertips are closest to face
+  // Face anchors: nose (0) + ears (7, 8)
   const faceAnchors = [0, 7, 8].map(i => poseLm[i]).filter(Boolean);
   if (faceAnchors.length > 0) {
-    const wristNear = [15, 16].some(i => {
+    const handNear = [15, 16, 17, 18, 19, 20].some(i => {
       const w = poseLm[i];
       if (!w) return false;
       return faceAnchors.some(anchor => {
         const dx = w.x - anchor.x, dy = w.y - anchor.y;
-        return Math.sqrt(dx*dx + dy*dy) < 0.28;
+        return Math.sqrt(dx*dx + dy*dy) < 0.32;
       });
     });
-    if (wristNear) {
+    if (handNear) {
       if (!state.headPropStart) state.headPropStart = nowMs;
       if (nowMs - state.headPropStart >= 2000) {
         state.battery = Math.min(state.battery, 0.35);
