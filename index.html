@@ -340,6 +340,7 @@
       font-size: 0.58rem;
       color: var(--text);
       letter-spacing: 0.06em;
+      text-transform: uppercase;
     }
 
     .legend-dot {
@@ -729,7 +730,7 @@
   <div id="legend" class="collapsed">
     <div class="legend-title">Social Battery</div>
     <button id="legend-toggle">
-      <span id="legend-toggle-text">Show All</span>
+      <span id="legend-toggle-text">SHOW ALL</span>
       <span id="legend-toggle-icon">▾</span>
     </button>
     <div id="legend-rows">
@@ -1020,7 +1021,7 @@ function updateState(state, poseLm, faceBlends) {
   state.crossedArms = (state.crossedArms || 0) * 0.93 + rawCrossed  * 0.07;
 
   // Jaw: fast accumulation, slow decay
-  state.jawActivity = state.jawActivity * 0.88 + jawActivity * 0.12;
+  state.jawActivity = state.jawActivity * 0.75 + jawActivity * 0.25;
   // Anger: needs sustained frown to trigger, fades quickly when released
   state.angryScore  = state.angryScore  * 0.85 + rawAngry    * 0.15;
 
@@ -1399,9 +1400,9 @@ function drawFaceLabels(pts, blendshapes) {
   const mFrown  = Math.min(((bs.mouthFrownLeft || 0) + (bs.mouthFrownRight|| 0)) / 2 * 9.0, 1);
   const jawOpen =   bs.jawOpen || 0;
 
-  drawFaceCallout(pts.fSmileX, pts.fSmileY,  1,  0, 'Smile',   smile,   lerpColor('#64748b', '#6ee7b7', smile));
-  drawFaceCallout(pts.fFrownX, pts.fFrownY, -1,  0, 'Frown',   mFrown,  lerpColor('#64748b', '#f87171', mFrown));
-  drawFaceCallout(pts.fChinX,  pts.fChinY,   0,  1, 'Talking', jawOpen, lerpColor('#64748b', '#a78bfa', jawOpen));
+  drawFaceCallout(pts.fSmileX, pts.fSmileY,  1,  0, 'SMILE',   smile,   lerpColor('#64748b', '#6ee7b7', smile));
+  drawFaceCallout(pts.fFrownX, pts.fFrownY, -1,  0, 'FROWN',   mFrown,  lerpColor('#64748b', '#f87171', mFrown));
+  drawFaceCallout(pts.fChinX,  pts.fChinY,   0,  1, 'TALKING', jawOpen, lerpColor('#64748b', '#a78bfa', jawOpen));
 }
 
 // ── Drawing ───────────────────────────────────────────────────────────────────
@@ -1610,11 +1611,10 @@ function drawBatteryIndicator(x, y, battery, state) {
 }
 
 function drawSignalBars(cx, y, state) {
-  const talkDrain = Math.min(state.jawActivity / 0.5, 1.0); // 0=silent 1=talking a lot
+  const talkDrain = Math.min(state.jawActivity / 0.25, 1.0); // 0=silent 1=talking a lot
   const signals = [
-    { label: 'Mood',   val: state.face                    },
-    { label: 'Talk',   val: 1 - talkDrain, inverted: true }, // drains = red when high
-    { label: 'Energy', val: state.movement                },
+    { label: 'MOOD', val: state.face                    },
+    { label: 'TALK', val: 1 - talkDrain, inverted: true }, // drains = red when high
   ];
   const barW = 30, barH = 4, gap = 40;
   const totalW = signals.length * barW + (signals.length-1) * (gap - barW);
@@ -1760,7 +1760,7 @@ function detect() {
     ctx.fillStyle = 'rgba(255,255,255,0.5)';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('Point camera at a person', W/2, H/2);
+    ctx.fillText('POINT CAMERA AT A PERSON', W/2, H/2);
     ctx.restore();
   }
 }
@@ -1842,7 +1842,7 @@ skelBtn.addEventListener('click', () => {
 document.getElementById('legend-toggle').addEventListener('click', () => {
   const legend = document.getElementById('legend');
   const isCollapsed = legend.classList.toggle('collapsed');
-  document.getElementById('legend-toggle-text').textContent = isCollapsed ? 'Show All' : 'Collapse';
+  document.getElementById('legend-toggle-text').textContent = isCollapsed ? 'SHOW ALL' : 'COLLAPSE';
 });
 
 function updateDebugPanel() {}
