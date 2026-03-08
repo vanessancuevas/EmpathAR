@@ -869,6 +869,11 @@ let modelsReady = 0;
 // Per-person smoothed state (keyed by detection index)
 const personStates = {};
 
+// Persistent person identity tracking
+const trackedPersons = []; // { id, centroid:{x,y}, state, lastSeen }
+let nextPersonId = 1;
+const MATCH_DIST = 300; // canvas-px radius to re-identify a returning person
+
 // Battery level → visual config
 const LEVELS = [
   { min: 0.80, color: '#6ee7b7', glow: '#34d399', label: '✦ Energized',   action: 'Expand & Open Up'  },
@@ -1607,6 +1612,69 @@ function drawBatteryIndicator(x, y, battery, state, personIdx) {
   ctx.restore();
 }
 
+// ── Persistent person matching ────────────────────────────────────────────────
+function computePoseCentroid(poseLm, map) {
+  const visible = poseLm.filter(l => (l.visibility || 0) > 0.4);
+  if (visible.length < 4) return null;
+  const pts = visible.map(l => lmToCanvas(l, map));
+  return {
+    x: pts.reduce((s, p) => s + p.x, 0) / pts.length,
+    y: pts.reduce((s, p) => s + p.y, 0) / pts.length,
+  };
+}
+
+function matchPosesToPersons(poses, map, now) {
+  const centroids = poses.map(lm => computePoseCentroid(lm, map));
+
+  // Build all candidate pairs sorted by distance
+  const candidates = [];
+  centroids.forEach((c, pIdx) => {
+    if (!c) return;
+    trackedPersons.forEach((person, tIdx) => {
+      const dx = c.x - person.centroid.x;
+      const dy = c.y - person.centroid.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < MATCH_DIST) candidates.push([dist, pIdx, tIdx]);
+    });
+  });
+  candidates.sort((a, b) => a[0] - b[0]);
+
+  const poseToTIdx = new Array(poses.length).fill(-1);
+  const takenT = new Set();
+  for (const [, pIdx, tIdx] of candidates) {
+    if (poseToTIdx[pIdx] >= 0 || takenT.has(tIdx)) continue;
+    poseToTIdx[pIdx] = tIdx;
+    takenT.add(tIdx);
+  }
+
+  // Create new tracked persons for unmatched poses
+  centroids.forEach((c, pIdx) => {
+    if (!c || poseToTIdx[pIdx] >= 0) return;
+    trackedPersons.push({
+      id: nextPersonId++,
+      centroid: c,
+      state: {
+        battery: 0.65, posture: 0.55, face: 0.55, movement: 0.55,
+        jawActivity: 0, angryScore: 0,
+        isTalking: false, isAngry: false,
+        prev: null, msgTimer: 0, currentMsg: null,
+      },
+      lastSeen: now,
+    });
+    poseToTIdx[pIdx] = trackedPersons.length - 1;
+  });
+
+  // Update centroids + lastSeen for matched persons
+  centroids.forEach((c, pIdx) => {
+    const tIdx = poseToTIdx[pIdx];
+    if (tIdx < 0 || !c) return;
+    trackedPersons[tIdx].centroid = c;
+    trackedPersons[tIdx].lastSeen = now;
+  });
+
+  return poseToTIdx; // poseIdx → trackedPersons index (-1 if no centroid)
+}
+
 // ── Detection loop ────────────────────────────────────────────────────────────
 let lastVideoTime = -1;
 let detectedCount = 0;
@@ -1638,14 +1706,25 @@ function detect() {
   detectedCount = poses.length;
   updateStatus(detectedCount);
 
-  // Dismiss active toasts for persons no longer in frame
+  // Match poses to persistent tracked persons
+  const poseToTIdx = matchPosesToPersons(poses, map, now);
+
+  // Dismiss toasts for persons no longer in frame
+  const activePid0s = new Set(
+    poseToTIdx.filter(x => x >= 0).map(tIdx => trackedPersons[tIdx].id - 1)
+  );
   Object.keys(personIds).forEach(k => {
-    if (parseInt(k) >= poses.length) dismissPersonNotifs(parseInt(k));
+    const pid0 = parseInt(k);
+    if (!activePid0s.has(pid0)) dismissPersonNotifs(pid0);
   });
 
-  poses.forEach((poseLm, i) => {
-    const state = getOrCreateState(i);
-    const blends = faceBlendshapes[i] ? [faceBlendshapes[i]] : null;
+  poses.forEach((poseLm, poseIdx) => {
+    const tIdx = poseToTIdx[poseIdx];
+    if (tIdx < 0) return;
+    const person = trackedPersons[tIdx];
+    const pid0   = person.id - 1; // 0-based: person 1 → pid0 0
+    const state  = person.state;
+    const blends = faceBlendshapes[poseIdx] ? [faceBlendshapes[poseIdx]] : null;
     updateState(state, poseLm, blends);
 
     const battery = state.battery;
@@ -1677,7 +1756,7 @@ function detect() {
     sm('headW', Math.max(Math.abs(rawEarR.x - rawEarL.x), 60));
 
     // Face label anchors (only if face model has data)
-    const faceLm = faceLandmarksList[i];
+    const faceLm = faceLandmarksList[poseIdx];
     if (faceLm && faceLm.length >= 400) {
       const rSmile = lmToCanvas(faceLm[291], map);
       const rFrown = lmToCanvas(faceLm[61],  map);
@@ -1699,18 +1778,18 @@ function detect() {
     if (showSkeleton) drawSkeleton(poseLm, map, 0.7);
 
     // Floating battery above head
-    const floatOff      = Math.sin(now * 0.0016 + i * 1.4) * 9;
+    const floatOff      = Math.sin(now * 0.0016 + person.id * 1.4) * 9;
     const headTopY      = sp.noseY - sp.headW * 0.95;
     const clusterBottom = headTopY - 18 - floatOff;
 
-    drawBatteryIndicator(sp.noseX, clusterBottom, battery, state, i);
-    updateToast(i, state, battery, now);
+    drawBatteryIndicator(sp.noseX, clusterBottom, battery, state, pid0);
+    updateToast(pid0, state, battery, now);
 
     // Face labels use smoothed anchor points
     if (faceLm && faceLm.length >= 400 && sp.fSmileX !== undefined) {
-      drawFaceLabels(sp, faceBlendshapes[i] ? [faceBlendshapes[i]] : null);
+      drawFaceLabels(sp, faceBlendshapes[poseIdx] ? [faceBlendshapes[poseIdx]] : null);
     }
-    if (i === 0) updateDebugPanel(state);
+    if (poseIdx === 0) updateDebugPanel(state);
   });
 
   // "No person" hint
