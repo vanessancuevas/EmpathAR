@@ -129,9 +129,9 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: flex-start;
+      justify-content: space-evenly;
       gap: 0;
-      padding: 16px 16px 0;
+      padding: 16px 16px;
       position: relative; z-index: 1;
       width: 100%;
       overflow-x: hidden;
@@ -181,7 +181,7 @@
       font-family: var(--font-m);
       font-size: 0.62rem;
       letter-spacing: 0.20em;
-      color: var(--muted);
+      color: #00d4b8;
       text-transform: uppercase;
       margin-bottom: 14px;
     }
@@ -807,10 +807,8 @@
   <!-- Main content -->
   <div class="landing-body">
 
-    <!-- Chrome note — flex:1 spacer centers it between sys-bar and radar -->
-    <div style="flex:1;display:flex;align-items:center;justify-content:center;width:100%;">
-      <p style="text-align:center;font-family:'Space Mono',monospace;font-size:0.72rem;color:#c8faf5;letter-spacing:0.10em;margin:0;">Best experience on Chrome or Android, which enables focus lock for smoother tracking.</p>
-    </div>
+    <!-- Chrome note -->
+    <p style="text-align:center;font-family:'Space Mono',monospace;font-size:0.72rem;color:#c8faf5;letter-spacing:0.10em;margin:0;">Best experience on Chrome or Android, which enables focus lock for smoother tracking.</p>
 
     <!-- Radar -->
     <div class="radar-wrap">
@@ -852,7 +850,6 @@
 
     <button id="start-btn">[ Initialize Scan ]</button>
     <p id="error-msg"></p>
-    <div style="flex:1;"></div>
   </div>
 
   <!-- Bottom system bar -->
