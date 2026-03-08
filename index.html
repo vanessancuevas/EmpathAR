@@ -1538,7 +1538,7 @@ function drawAura(cx, cy, rx, ry, color, glowColor, alpha) {
 }
 
 // y = bottom of the whole floating cluster (everything stacks upward from here)
-function drawBatteryIndicator(x, y, battery, state) {
+function drawBatteryIndicator(x, y, battery, state, personIdx) {
   const lvl = levelFor(battery);
   const pct = Math.round(battery * 100);
   const BW = 130, BH = 32, TERM = 8, R = 8;
@@ -1548,10 +1548,11 @@ function drawBatteryIndicator(x, y, battery, state) {
   const bx      = x - BW / 2;
   const labelCY = by - 14;  // label center 14px above battery top
 
-  // ── Status label ──
+  // ── Status label (P1, P2… + mood) ──
+  const pillText = `P${(personIdx || 0) + 1}  ${lvl.label}`;
   ctx.save();
   ctx.font = '600 12px Space Mono, monospace';
-  const lw = ctx.measureText(lvl.label).width + 22;
+  const lw = ctx.measureText(pillText).width + 22;
   ctx.beginPath();
   ctx.roundRect(x - lw/2, labelCY - 10, lw, 20, 10);
   ctx.fillStyle = 'rgba(0,0,0,0.62)';
@@ -1559,7 +1560,7 @@ function drawBatteryIndicator(x, y, battery, state) {
   ctx.fillStyle = lvl.color;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText(lvl.label, x, labelCY);
+  ctx.fillText(pillText, x, labelCY);
   ctx.restore();
 
   // ── Battery shell ──
@@ -1702,7 +1703,7 @@ function detect() {
     const headTopY      = sp.noseY - sp.headW * 0.95;
     const clusterBottom = headTopY - 18 - floatOff;
 
-    drawBatteryIndicator(sp.noseX, clusterBottom, battery, state);
+    drawBatteryIndicator(sp.noseX, clusterBottom, battery, state, i);
     updateToast(i, state, battery, now);
 
     // Face labels use smoothed anchor points
