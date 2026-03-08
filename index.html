@@ -1669,34 +1669,54 @@ function matchPosesToPersons(poses, map, now) {
   const centroids = poses.map(lm => computePoseCentroid(lm, map));
   const colors    = poses.map(lm => sampleTorsoColor(lm));
 
-  // Score every pose↔person pair — lower is better
-  // Colour is primary (70 %), normalised position is secondary (30 %)
-  const candidates = [];
-  centroids.forEach((c, pIdx) => {
-    if (!c) return;
-    trackedPersons.forEach((person, tIdx) => {
-      const dx = c.x - person.centroid.x;
-      const dy = c.y - person.centroid.y;
-      const posDist  = Math.sqrt(dx*dx + dy*dy);
-      const colDist  = colorDist(colors[pIdx], person.shirtColor);
-      const colorOk  = colDist  < 90;
-      const posClose = posDist  < MATCH_DIST;
-      if (!colorOk && !posClose) return; // neither signal matches — skip
-      const score = colDist * 0.70 + (posDist / MATCH_DIST * 255) * 0.30;
-      candidates.push([score, pIdx, tIdx]);
-    });
-  });
-  candidates.sort((a, b) => a[0] - b[0]);
+  const COLOR_THRESH = 110; // max RGB distance to call it the same shirt
+  const POS_THRESH   = 500; // px fallback when colour unavailable
 
   const poseToTIdx = new Array(poses.length).fill(-1);
-  const takenT = new Set();
-  for (const [, pIdx, tIdx] of candidates) {
+  const takenT     = new Set();
+
+  // ── Pass 1: colour match (primary) ──────────────────────────────────────────
+  // Only runs when both the detected pose AND the stored person have a colour sample.
+  // Sorted by colour distance so the closest match wins.
+  const colCands = [];
+  centroids.forEach((c, pIdx) => {
+    if (!c || !colors[pIdx]) return;
+    trackedPersons.forEach((person, tIdx) => {
+      if (!person.shirtColor) return;
+      const cd = colorDist(colors[pIdx], person.shirtColor);
+      if (cd < COLOR_THRESH) colCands.push([cd, pIdx, tIdx]);
+    });
+  });
+  colCands.sort((a, b) => a[0] - b[0]);
+  for (const [, pIdx, tIdx] of colCands) {
     if (poseToTIdx[pIdx] >= 0 || takenT.has(tIdx)) continue;
     poseToTIdx[pIdx] = tIdx;
     takenT.add(tIdx);
   }
 
-  // New tracked persons for unmatched poses
+  // ── Pass 2: position fallback for anything still unmatched ──────────────────
+  // Catches newly entering people who haven't been colour-sampled yet,
+  // and handles cases where colour sampling temporarily fails.
+  const posCands = [];
+  centroids.forEach((c, pIdx) => {
+    if (!c || poseToTIdx[pIdx] >= 0) return;
+    trackedPersons.forEach((person, tIdx) => {
+      if (takenT.has(tIdx)) return;
+      const dx = c.x - person.centroid.x;
+      const dy = c.y - person.centroid.y;
+      const d  = Math.sqrt(dx * dx + dy * dy);
+      if (d < POS_THRESH) posCands.push([d, pIdx, tIdx]);
+    });
+  });
+  posCands.sort((a, b) => a[0] - b[0]);
+  for (const [, pIdx, tIdx] of posCands) {
+    if (poseToTIdx[pIdx] >= 0 || takenT.has(tIdx)) continue;
+    poseToTIdx[pIdx] = tIdx;
+    takenT.add(tIdx);
+  }
+
+  // ── Pass 3: genuinely new shirt → new persistent ID ─────────────────────────
+  // The count only ever goes up; IDs are never recycled or reassigned.
   centroids.forEach((c, pIdx) => {
     if (!c || poseToTIdx[pIdx] >= 0) return;
     trackedPersons.push({
@@ -1714,15 +1734,16 @@ function matchPosesToPersons(poses, map, now) {
     poseToTIdx[pIdx] = trackedPersons.length - 1;
   });
 
-  // Update centroid, shirt colour (slow EMA), lastSeen
+  // ── Update centroid + colour EMA for every matched person ───────────────────
   centroids.forEach((c, pIdx) => {
     const tIdx = poseToTIdx[pIdx];
     if (tIdx < 0 || !c) return;
-    const p = trackedPersons[tIdx];
+    const p  = trackedPersons[tIdx];
     p.centroid = c;
     p.lastSeen = now;
     const nc = colors[pIdx];
     if (nc && p.shirtColor) {
+      // Slow drift to handle lighting shifts without losing the signature
       p.shirtColor = [
         p.shirtColor[0] * 0.92 + nc[0] * 0.08,
         p.shirtColor[1] * 0.92 + nc[1] * 0.08,
