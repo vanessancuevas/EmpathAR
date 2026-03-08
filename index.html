@@ -1543,14 +1543,10 @@ function drawBatteryIndicator(x, y, battery, state) {
   const pct = Math.round(battery * 100);
   const BW = 130, BH = 32, TERM = 8, R = 8;
 
-  // Layout bottom→top: signal bars (16px) → gap 6 → label (20px) → gap 8 → battery (32px)
-  const barsTop  = y - 16;
-  const labelCY  = barsTop - 6 - 10;   // vertical center of label
-  const by       = labelCY - 10 - 8;   // battery top
-  const bx       = x - BW / 2;
-
-  // ── Signal bars ──
-  drawSignalBars(x, barsTop, state);
+  // Layout: battery sits at y, label floats above it
+  const by      = y - BH;
+  const bx      = x - BW / 2;
+  const labelCY = by - 14;  // label center 14px above battery top
 
   // ── Status label ──
   ctx.save();
@@ -1608,43 +1604,6 @@ function drawBatteryIndicator(x, y, battery, state) {
   ctx.shadowBlur = 4;
   ctx.fillText(`${pct}%`, bx + BW/2, by + BH/2);
   ctx.restore();
-}
-
-function drawSignalBars(cx, y, state) {
-  const talkDrain = Math.min(state.jawActivity / 0.25, 1.0); // 0=silent 1=talking a lot
-  const signals = [
-    { label: 'MOOD', val: state.face                    },
-    { label: 'TALK', val: 1 - talkDrain, inverted: true }, // drains = red when high
-  ];
-  const barW = 30, barH = 4, gap = 40;
-  const totalW = signals.length * barW + (signals.length-1) * (gap - barW);
-  let startX = cx - (signals.length * gap) / 2 + gap/2 - barW/2;
-
-  signals.forEach((sig, i) => {
-    const bx = startX + i * gap;
-    ctx.save();
-    // Track
-    ctx.beginPath();
-    ctx.roundRect(bx, y, barW, barH, barH/2);
-    ctx.fillStyle = 'rgba(255,255,255,0.15)';
-    ctx.fill();
-    // Fill (talk bar inverts: the drain amount fills red)
-    const fillVal = sig.inverted ? (1 - sig.val) : sig.val;
-    const fillColor = sig.inverted
-      ? `hsl(${Math.round((1 - fillVal) * 10)}, 90%, 60%)` // red as talk increases
-      : levelFor(sig.val).color;
-    ctx.beginPath();
-    ctx.roundRect(bx, y, barW * (sig.inverted ? fillVal : sig.val), barH, barH/2);
-    ctx.fillStyle = fillColor;
-    ctx.fill();
-    // Label
-    ctx.font = '9px Space Mono, monospace';
-    ctx.fillStyle = '#000';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'top';
-    ctx.fillText(sig.label, bx + barW/2, y + barH + 3);
-    ctx.restore();
-  });
 }
 
 // ── Detection loop ────────────────────────────────────────────────────────────
