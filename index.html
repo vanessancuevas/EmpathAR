@@ -1600,10 +1600,10 @@ function drawBatteryIndicator(x, y, battery, state) {
   // ── Percentage text ──
   ctx.save();
   ctx.font = 'bold 13px Space Mono, monospace';
-  ctx.fillStyle = '#000';
+  ctx.fillStyle = '#fff';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.shadowColor = 'rgba(255,255,255,0.5)';
+  ctx.shadowColor = 'rgba(0,0,0,0.9)';
   ctx.shadowBlur = 4;
   ctx.fillText(`${pct}%`, bx + BW/2, by + BH/2);
   ctx.restore();
@@ -1639,7 +1639,7 @@ function drawSignalBars(cx, y, state) {
     ctx.fill();
     // Label
     ctx.font = '9px Space Mono, monospace';
-    ctx.fillStyle = 'rgba(255,255,255,0.4)';
+    ctx.fillStyle = '#000';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
     ctx.fillText(sig.label, bx + barW/2, y + barH + 3);
