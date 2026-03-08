@@ -1612,7 +1612,49 @@ function drawBatteryIndicator(x, y, battery, state, personIdx) {
   ctx.restore();
 }
 
-// ── Persistent person matching ────────────────────────────────────────────────
+// ── Persistent person matching (colour + position) ───────────────────────────
+
+// Tiny offscreen canvas just for torso colour sampling
+const colorCanvas = document.createElement('canvas');
+colorCanvas.width = 8; colorCanvas.height = 8;
+const colorCtx = colorCanvas.getContext('2d', { willReadFrequently: true });
+
+// Sample the average RGB of the upper-torso region directly from the video frame
+function sampleTorsoColor(poseLm) {
+  const need = [11, 12, 23, 24];
+  if (!need.every(i => (poseLm[i]?.visibility || 0) > 0.4)) return null;
+  const vw = cam.videoWidth, vh = cam.videoHeight;
+  if (!vw || !vh) return null;
+
+  const lSh = poseLm[11], rSh = poseLm[12], lHip = poseLm[23], rHip = poseLm[24];
+  // Chest centre: 25% of the way between shoulders and hips
+  const cx  = (lSh.x + rSh.x) / 2;
+  const cy  = (lSh.y + rSh.y) / 2 + ((lHip.y + rHip.y) / 2 - (lSh.y + rSh.y) / 2) * 0.25;
+  const sw  = Math.max(Math.abs(rSh.x - lSh.x) * 0.40, 0.05); // normalised half-width
+  const sh  = sw;
+
+  const sx = Math.max(0, (cx - sw / 2) * vw);
+  const sy = Math.max(0, (cy - sh / 2) * vh);
+  const sw2 = Math.min(sw * vw, vw - sx);
+  const sh2 = Math.min(sh * vh, vh - sy);
+  if (sw2 < 2 || sh2 < 2) return null;
+
+  try {
+    colorCtx.drawImage(cam, sx, sy, sw2, sh2, 0, 0, 8, 8);
+    const d = colorCtx.getImageData(0, 0, 8, 8).data;
+    let r = 0, g = 0, b = 0;
+    for (let i = 0; i < d.length; i += 4) { r += d[i]; g += d[i+1]; b += d[i+2]; }
+    const n = d.length / 4;
+    return [r / n, g / n, b / n];
+  } catch (e) { return null; }
+}
+
+function colorDist(a, b) {
+  if (!a || !b) return 999;
+  const dr = a[0]-b[0], dg = a[1]-b[1], db = a[2]-b[2];
+  return Math.sqrt(dr*dr + dg*dg + db*db); // max ~441
+}
+
 function computePoseCentroid(poseLm, map) {
   const visible = poseLm.filter(l => (l.visibility || 0) > 0.4);
   if (visible.length < 4) return null;
@@ -1625,16 +1667,23 @@ function computePoseCentroid(poseLm, map) {
 
 function matchPosesToPersons(poses, map, now) {
   const centroids = poses.map(lm => computePoseCentroid(lm, map));
+  const colors    = poses.map(lm => sampleTorsoColor(lm));
 
-  // Build all candidate pairs sorted by distance
+  // Score every pose↔person pair — lower is better
+  // Colour is primary (70 %), normalised position is secondary (30 %)
   const candidates = [];
   centroids.forEach((c, pIdx) => {
     if (!c) return;
     trackedPersons.forEach((person, tIdx) => {
       const dx = c.x - person.centroid.x;
       const dy = c.y - person.centroid.y;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist < MATCH_DIST) candidates.push([dist, pIdx, tIdx]);
+      const posDist  = Math.sqrt(dx*dx + dy*dy);
+      const colDist  = colorDist(colors[pIdx], person.shirtColor);
+      const colorOk  = colDist  < 90;
+      const posClose = posDist  < MATCH_DIST;
+      if (!colorOk && !posClose) return; // neither signal matches — skip
+      const score = colDist * 0.70 + (posDist / MATCH_DIST * 255) * 0.30;
+      candidates.push([score, pIdx, tIdx]);
     });
   });
   candidates.sort((a, b) => a[0] - b[0]);
@@ -1647,12 +1696,13 @@ function matchPosesToPersons(poses, map, now) {
     takenT.add(tIdx);
   }
 
-  // Create new tracked persons for unmatched poses
+  // New tracked persons for unmatched poses
   centroids.forEach((c, pIdx) => {
     if (!c || poseToTIdx[pIdx] >= 0) return;
     trackedPersons.push({
       id: nextPersonId++,
       centroid: c,
+      shirtColor: colors[pIdx],
       state: {
         battery: 0.65, posture: 0.55, face: 0.55, movement: 0.55,
         jawActivity: 0, angryScore: 0,
@@ -1664,15 +1714,26 @@ function matchPosesToPersons(poses, map, now) {
     poseToTIdx[pIdx] = trackedPersons.length - 1;
   });
 
-  // Update centroids + lastSeen for matched persons
+  // Update centroid, shirt colour (slow EMA), lastSeen
   centroids.forEach((c, pIdx) => {
     const tIdx = poseToTIdx[pIdx];
     if (tIdx < 0 || !c) return;
-    trackedPersons[tIdx].centroid = c;
-    trackedPersons[tIdx].lastSeen = now;
+    const p = trackedPersons[tIdx];
+    p.centroid = c;
+    p.lastSeen = now;
+    const nc = colors[pIdx];
+    if (nc && p.shirtColor) {
+      p.shirtColor = [
+        p.shirtColor[0] * 0.92 + nc[0] * 0.08,
+        p.shirtColor[1] * 0.92 + nc[1] * 0.08,
+        p.shirtColor[2] * 0.92 + nc[2] * 0.08,
+      ];
+    } else if (nc) {
+      p.shirtColor = nc;
+    }
   });
 
-  return poseToTIdx; // poseIdx → trackedPersons index (-1 if no centroid)
+  return poseToTIdx;
 }
 
 // ── Detection loop ────────────────────────────────────────────────────────────
