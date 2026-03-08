@@ -752,12 +752,12 @@
         <div><strong style="color:#6ee7b7">Energized</strong> — Expand &amp; Open Up<div class="legend-desc">They're fully charged. Go deeper, share more, and let the conversation flow freely.</div></div>
       </div>
       <div class="legend-row">
-        <div class="legend-dot" style="background:#60a5fa"></div>
-        <div><strong style="color:#60a5fa">Present</strong> — Stay &amp; Connect<div class="legend-desc">Engaged and available. Match their energy, stay curious, and build on the moment.</div></div>
-      </div>
-      <div class="legend-row">
         <div class="legend-dot" style="background:#fbbf24"></div>
         <div><strong style="color:#fbbf24">Engaged</strong> — Keep It Light<div class="legend-desc">Focused but not overflowing. Avoid heavy topics and keep things flowing naturally.</div></div>
+      </div>
+      <div class="legend-row">
+        <div class="legend-dot" style="background:#60a5fa"></div>
+        <div><strong style="color:#60a5fa">Present</strong> — Stay &amp; Connect<div class="legend-desc">Engaged and available. Match their energy, stay curious, and build on the moment.</div></div>
       </div>
       <div class="legend-row">
         <div class="legend-dot" style="background:#f97316"></div>
@@ -885,8 +885,8 @@ const MATCH_DIST = 300; // canvas-px radius to re-identify a returning person
 // Battery level → visual config
 const LEVELS = [
   { min: 0.80, color: '#6ee7b7', glow: '#34d399', label: '✦ Energized',   action: 'Expand & Open Up'  },
-  { min: 0.60, color: '#60a5fa', glow: '#3b82f6', label: '● Present',     action: 'Stay & Connect'    },
-  { min: 0.40, color: '#fbbf24', glow: '#f59e0b', label: '◐ Engaged',     action: 'Keep It Light'     },
+  { min: 0.60, color: '#fbbf24', glow: '#f59e0b', label: '◐ Engaged',     action: 'Keep It Light'     },
+  { min: 0.40, color: '#60a5fa', glow: '#3b82f6', label: '● Present',     action: 'Stay & Connect'    },
   { min: 0.20, color: '#f97316', glow: '#ea580c', label: '○ Fading',      action: 'Wind Down & Close' },
   { min: 0.00, color: '#a78bfa', glow: '#7c3aed', label: '↓ Needs Space', action: 'Give Space'        },
 ];
