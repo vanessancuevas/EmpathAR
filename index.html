@@ -873,6 +873,10 @@ import { PoseLandmarker, FaceLandmarker, FilesetResolver }
 const cam       = document.getElementById('cam');
 const canvas    = document.getElementById('overlay');
 const ctx       = canvas.getContext('2d');
+
+// ── Offscreen canvas for lighting compensation ────────────────────────────────
+const lightCanvas = document.createElement('canvas');
+const lightCtx    = lightCanvas.getContext('2d', { willReadFrequently: true });
 const landing   = document.getElementById('landing');
 const hud       = document.getElementById('hud');
 const statusEl  = document.getElementById('status');
@@ -1554,24 +1558,32 @@ const POSE_CONNECTIONS = [
   [0,1],[1,2],[2,3],[3,7],[0,4],[4,5],[5,6],[6,8], // face/head edges
 ];
 
-function drawSkeleton(lm, map, alpha) {
+function drawSkeleton(lm, map, alpha, faceLm) {
+  // Replace pose mouth landmarks (9=left, 10=right) with precise face landmarks
+  // if available — face landmarker 61=left corner, 291=right corner
+  const resolved = lm.map((l, i) => {
+    if (i === 9  && faceLm && faceLm[61])  return { ...faceLm[61],  visibility: 1 };
+    if (i === 10 && faceLm && faceLm[291]) return { ...faceLm[291], visibility: 1 };
+    return l;
+  });
+
   ctx.save();
   ctx.globalAlpha = alpha * 0.6;
   ctx.strokeStyle = '#a78bfa';
   ctx.lineWidth = 2;
   ctx.lineCap = 'round';
   POSE_CONNECTIONS.forEach(([a, b]) => {
-    if (!lm[a] || !lm[b]) return;
-    if ((lm[a].visibility || 0) < 0.4 || (lm[b].visibility || 0) < 0.4) return;
-    const pa = lmToCanvas(lm[a], map);
-    const pb = lmToCanvas(lm[b], map);
+    if (!resolved[a] || !resolved[b]) return;
+    if ((resolved[a].visibility || 0) < 0.4 || (resolved[b].visibility || 0) < 0.4) return;
+    const pa = lmToCanvas(resolved[a], map);
+    const pb = lmToCanvas(resolved[b], map);
     ctx.beginPath();
     ctx.moveTo(pa.x, pa.y);
     ctx.lineTo(pb.x, pb.y);
     ctx.stroke();
   });
   // Keypoints
-  lm.forEach(l => {
+  resolved.forEach(l => {
     if ((l.visibility || 0) < 0.4) return;
     const p = lmToCanvas(l, map);
     ctx.beginPath();
@@ -1895,6 +1907,51 @@ function matchPosesToPersons(poses, map, now) {
 let lastVideoTime = -1;
 let detectedCount = 0;
 
+// ── Lighting compensation ─────────────────────────────────────────────────────
+// Samples average brightness and applies adaptive brightness+contrast boost
+// so MediaPipe gets a well-exposed frame regardless of ambient light conditions.
+function getLitFrame() {
+  const vw = cam.videoWidth, vh = cam.videoHeight;
+  if (!vw || !vh) return cam;
+
+  lightCanvas.width  = vw;
+  lightCanvas.height = vh;
+
+  // Draw raw frame
+  lightCtx.drawImage(cam, 0, 0, vw, vh);
+
+  // Sample brightness from a small centre region (faster than full frame)
+  const sw = Math.floor(vw * 0.25), sh = Math.floor(vh * 0.25);
+  const sx = Math.floor(vw * 0.375), sy = Math.floor(vh * 0.375);
+  const sample = lightCtx.getImageData(sx, sy, sw, sh).data;
+  let sum = 0;
+  for (let i = 0; i < sample.length; i += 4) {
+    sum += (sample[i] * 0.299 + sample[i+1] * 0.587 + sample[i+2] * 0.114);
+  }
+  const avgBrightness = sum / (sample.length / 4);
+
+  // Only compensate if noticeably dark (<100) or bright (>180)
+  if (avgBrightness >= 100 && avgBrightness <= 180) return lightCanvas;
+
+  let brightnessF = 1, contrastF = 1;
+  if (avgBrightness < 100) {
+    // Dark: boost brightness and contrast
+    brightnessF = Math.min(2.0, 130 / Math.max(avgBrightness, 10));
+    contrastF   = 1.2;
+  } else {
+    // Overexposed: pull back
+    brightnessF = Math.max(0.6, 150 / avgBrightness);
+    contrastF   = 0.9;
+  }
+
+  lightCtx.save();
+  lightCtx.filter = `brightness(${brightnessF.toFixed(2)}) contrast(${contrastF.toFixed(2)})`;
+  lightCtx.drawImage(cam, 0, 0, vw, vh);
+  lightCtx.restore();
+
+  return lightCanvas;
+}
+
 function detect() {
   requestAnimationFrame(detect);
 
@@ -1907,14 +1964,17 @@ function detect() {
 
   ctx.clearRect(0, 0, W, H);
 
+  // Apply lighting compensation before detection
+  const detectionSource = getLitFrame();
+
   // Run pose
-  const poseResult = poseLandmarker.detectForVideo(cam, now);
+  const poseResult = poseLandmarker.detectForVideo(detectionSource, now);
   const poses = poseResult.landmarks || [];
 
   // Run face (if loaded)
   let faceResult = null;
   if (faceLandmarker) {
-    faceResult = faceLandmarker.detectForVideo(cam, now);
+    faceResult = faceLandmarker.detectForVideo(detectionSource, now);
   }
   const faceBlendshapes  = faceResult?.faceBlendshapes  || [];
   const faceLandmarksList = faceResult?.faceLandmarks   || [];
@@ -2003,7 +2063,7 @@ function detect() {
     drawFocusBrackets(sp.minX, sp.minY, sp.maxX, sp.maxY, lvl.color, lvl.glow, battery, now);
     drawAura(cx, cy, rx, ry, lvl.color, lvl.glow, battery);
 
-    if (showSkeleton) drawSkeleton(state._smoothLm || poseLm, map, 0.7);
+    if (showSkeleton) drawSkeleton(state._smoothLm || poseLm, map, 0.7, faceLm0);
 
     // Floating battery above head
     const floatOff      = Math.sin(now * 0.0016 + person.id * 1.4) * 9;
