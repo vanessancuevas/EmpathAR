@@ -381,107 +381,17 @@
     }
 
 
-    /* ── Radar ── */
-    .radar-wrap {
+    /* ── Battery ── */
+    .battery-wrap {
       display: flex;
       flex-direction: column;
       align-items: center;
       gap: 6px;
     }
 
-    .radar {
-      width: 120px;
-      height: 120px;
-      border-radius: 50%;
-      border: 1px solid var(--accent-bd);
-      background: radial-gradient(circle, rgba(0,212,184,0.06) 0%, rgba(3,13,18,0.95) 100%);
-      position: relative;
-      overflow: hidden;
-    }
-
-    .radar-ring {
-      position: absolute;
-      top: 50%; left: 50%;
-      transform: translate(-50%, -50%);
-      border-radius: 50%;
-      border: 1px solid var(--accent-bd);
-    }
-
-    .radar-cross-h {
-      position: absolute;
-      width: 100%; height: 1px;
-      top: 50%; left: 0;
-      background: var(--accent-bd);
-    }
-
-    .radar-cross-v {
-      position: absolute;
-      width: 1px; height: 100%;
-      top: 0; left: 50%;
-      background: var(--accent-bd);
-    }
-
-    .radar-sweep {
-      position: absolute;
-      inset: 0;
-      border-radius: 50%;
-      background: conic-gradient(
-        transparent 0deg,
-        transparent 255deg,
-        rgba(0,212,184,0.03) 275deg,
-        rgba(0,212,184,0.12) 320deg,
-        rgba(0,212,184,0.50) 355deg,
-        rgba(0,212,184,0.50) 360deg
-      );
-      animation: radar-spin 3s linear infinite;
-    }
-
-    /* Sweep line tip */
-    .radar-sweep::after {
-      content: '';
-      position: absolute;
-      top: 50%; left: 50%;
-      width: 50%; height: 1px;
-      background: linear-gradient(to right, rgba(0,212,184,0.3), var(--accent));
-      transform-origin: left center;
-      box-shadow: 0 0 4px var(--accent);
-    }
-
-    @keyframes radar-spin {
-      from { transform: rotate(0deg); }
-      to   { transform: rotate(360deg); }
-    }
-
-    .radar-center {
-      position: absolute;
-      top: 50%; left: 50%;
-      transform: translate(-50%, -50%);
-      width: 4px; height: 4px;
-      border-radius: 50%;
-      background: var(--accent);
-      box-shadow: 0 0 6px var(--accent);
-    }
-
-    .radar-blip {
-      position: absolute;
-      width: 3px; height: 3px;
-      border-radius: 50%;
-      background: var(--accent);
-      box-shadow: 0 0 6px var(--accent);
-      animation: blip-pulse 2.8s ease-in-out infinite;
-    }
-
-    @keyframes blip-pulse {
-      0%, 100% { opacity: 0; }
-      35%, 65%  { opacity: 1; }
-    }
-
-    .radar-label {
-      font-family: var(--font-m);
-      font-size: 0.48rem;
-      letter-spacing: 0.24em;
-      color: var(--muted);
-      text-transform: uppercase;
+    #battery-canvas {
+      display: block;
+      border-radius: 4px;
     }
 
     /* ── Toast notifications ── */
@@ -816,20 +726,9 @@
     <!-- Chrome note -->
     <p style="text-align:center;font-family:'Space Mono',monospace;font-size:0.72rem;color:#c8faf5;letter-spacing:0.10em;margin:0;">Best experience on Chrome or Android, which enables focus lock for smoother tracking.</p>
 
-    <!-- Radar -->
-    <div class="radar-wrap">
-      <div class="radar">
-        <div class="radar-ring" style="width:66%;height:66%"></div>
-        <div class="radar-ring" style="width:33%;height:33%"></div>
-        <div class="radar-cross-h"></div>
-        <div class="radar-cross-v"></div>
-        <div class="radar-sweep"></div>
-        <div class="radar-center"></div>
-        <div class="radar-blip" style="top:27%;left:58%;animation-delay:0s"></div>
-        <div class="radar-blip" style="top:61%;left:33%;animation-delay:1.4s"></div>
-        <div class="radar-blip" style="top:44%;left:22%;animation-delay:2.1s"></div>
-      </div>
-
+    <!-- Battery -->
+    <div class="battery-wrap">
+      <canvas id="battery-canvas" width="160" height="120"></canvas>
     </div>
 
     <div class="title-panel bracketed">
@@ -1108,39 +1007,50 @@ function updateState(state, poseLm, faceBlends, faceLm) {
 
   const nowMs = performance.now();
 
-  // ── Sustained frown → Fading (3s), then Needs Space (10s) ──
-  if (state._frown > 0.20) {
-    if (!state.frownStart) state.frownStart = nowMs;
-    const frownDur = nowMs - state.frownStart;
-    if (frownDur >= 10000) {
-      state.battery = Math.min(state.battery, 0.10);
-    } else if (frownDur >= 3000) {
-      state.battery = Math.min(state.battery, 0.35);
-    }
-  } else {
-    state.frownStart = null;
-  }
-
-  // ── Clap detection → max Energized ──
-  // Detect wrist proximity rising edge (hands coming together = one clap)
+  // ── Clap detection → Present (clap alone) or Energized (clap + smile) ──
+  // Use wrist landmarks 15 (left) + 16 (right) — same points shown on skeleton
   if (poseLm[15] && poseLm[16]) {
     const dx = poseLm[15].x - poseLm[16].x;
     const dy = poseLm[15].y - poseLm[16].y;
     const wristDist = Math.sqrt(dx*dx + dy*dy);
     const prevDist  = state.prevWristDist ?? 1;
-    if (wristDist < 0.15 && prevDist >= 0.15) {
-      state.clapTimes = (state.clapTimes || []).filter(t => nowMs - t < 2500);
+    if (nowMs % 500 < 100) console.log('[clap] wristDist:', wristDist.toFixed(3), 'prevDist:', prevDist.toFixed(3), 'clapTimes:', (state.clapTimes||[]).length);
+    if (wristDist < 0.20 && prevDist >= 0.20) {
+      state.clapTimes = (state.clapTimes || []).filter(t => nowMs - t < 3000);
       state.clapTimes.push(nowMs);
-      if (state.clapTimes.length >= 3) {
-        state.battery   = 1.0;
-        state.clapTimes = [];
+      console.log('[clap] EDGE detected! count:', state.clapTimes.length);
+      if (state.clapTimes.length >= 2) {
+        const isSmiling = (state._smile || 0) > 0.35;
+        console.log('[clap] TRIGGERED! isSmiling:', isSmiling, 'battery before:', state.battery.toFixed(2));
+        state.battery        = isSmiling ? 1.0 : Math.max(state.battery, 0.50);
+        state.clapBoostUntil = nowMs + 3000;
+        state.frownStart     = null;
+        state.clapTimes      = [];
+        console.log('[clap] battery after:', state.battery.toFixed(2));
       }
     }
     state.prevWristDist = wristDist;
   }
 
+  const clapBoosted = state.clapBoostUntil && nowMs < state.clapBoostUntil;
+
+  // ── Sustained frown → Fading (3s), then Needs Space (10s) ──
+  if (!clapBoosted) {
+    if (state._frown > 0.20) {
+      if (!state.frownStart) state.frownStart = nowMs;
+      const frownDur = nowMs - state.frownStart;
+      if (frownDur >= 10000) {
+        state.battery = Math.min(state.battery, 0.10);
+      } else if (frownDur >= 3000) {
+        state.battery = Math.min(state.battery, 0.35);
+      }
+    } else {
+      state.frownStart = null;
+    }
+  }
+
   // ── Yawning → Fading (wide jaw sustained > 1.5s, distinguishable from talking) ──
-  if (state.jawActivity > 0.60) {
+  if (!clapBoosted && state.jawActivity > 0.60) {
     if (!state.yawnStart) state.yawnStart = nowMs;
     if (nowMs - state.yawnStart >= 1500) {
       state.battery = Math.min(state.battery, 0.35);
@@ -1153,7 +1063,7 @@ function updateState(state, poseLm, faceBlends, faceLm) {
   // Use wrists + fingertip landmarks (pinky 17/18, index 19/20) — fingertips are closest to face
   // Face anchors: nose (0) + ears (7, 8)
   const faceAnchors = [0, 7, 8].map(i => poseLm[i]).filter(Boolean);
-  if (faceAnchors.length > 0) {
+  if (!clapBoosted && faceAnchors.length > 0) {
     const handNear = [15, 16, 17, 18, 19, 20].some(i => {
       const w = poseLm[i];
       if (!w) return false;
@@ -2124,9 +2034,9 @@ async function loadModels() {
     },
     runningMode: 'VIDEO',
     numPoses: 3,
-    minPoseDetectionConfidence: 0.5,
-    minPosePresenceConfidence: 0.5,
-    minTrackingConfidence: 0.5,
+    minPoseDetectionConfidence: 0.72,
+    minPosePresenceConfidence: 0.72,
+    minTrackingConfidence: 0.72,
   });
   setLoadProgress(65);
   updateStatus(0);
@@ -2140,9 +2050,9 @@ async function loadModels() {
     runningMode: 'VIDEO',
     numFaces: 3,
     outputFaceBlendshapes: true,
-    minFaceDetectionConfidence: 0.5,
-    minFacePresenceConfidence: 0.5,
-    minTrackingConfidence: 0.5,
+    minFaceDetectionConfidence: 0.72,
+    minFacePresenceConfidence: 0.72,
+    minTrackingConfidence: 0.72,
   }).then(fl => {
     faceLandmarker = fl;
     setLoadProgress(100);
@@ -2204,6 +2114,100 @@ document.getElementById('start-btn').addEventListener('click', async () => {
 
 if (new URLSearchParams(location.search).get('autostart') === '1')
   document.getElementById('start-btn').click();
+</script>
+
+<script>
+// ── Battery canvas animation (landing screen) ────────────────────────────────
+(function () {
+  const canvas = document.getElementById('battery-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  let t = 0;
+
+  function rr(x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+    ctx.lineTo(x + w, y + h - r);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    ctx.lineTo(x + r, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.closePath();
+  }
+
+  function draw() {
+    const W = canvas.width, H = canvas.height;
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = 'rgba(4,12,16,1)';
+    ctx.fillRect(0, 0, W, H);
+
+    t += 0.008;
+
+    const cx = W / 2, cy = H / 2;
+    const bw = W * 0.72, bh = H * 0.30;
+    const bx = cx - bw / 2, by = cy - bh / 2;
+    const tipW = bw * 0.05, tipH = bh * 0.42;
+    const r = 4;
+
+    // 0→1 with a pause at full, then reset
+    const cycle = t % 1.6;
+    const fill  = cycle < 1.2 ? cycle / 1.2 : 1;
+
+    // Colour: dark blue → teal as charging
+    const fr = 4  + (30  - 4)  * fill;
+    const fg = 40 + (207 - 40) * fill;
+    const fb = 80 + (207 - 80) * fill;
+
+    // Fill bar
+    const fillW = (bw - 4) * fill;
+    ctx.fillStyle = `rgba(${fr|0},${fg|0},${fb|0},1)`;
+    rr(bx + 2, by + 2, fillW, bh - 4, r - 1);
+    ctx.fill();
+
+    // Scanlines
+    ctx.strokeStyle = 'rgba(4,12,16,0.25)';
+    ctx.lineWidth = 1;
+    for (let x = bx + 4; x < bx + 2 + fillW; x += 5) {
+      ctx.beginPath();
+      ctx.moveTo(x, by + 2);
+      ctx.lineTo(x, by + bh - 2);
+      ctx.stroke();
+    }
+
+    // Outline
+    ctx.strokeStyle = 'rgba(0,212,184,1)';
+    ctx.lineWidth = 2;
+    rr(bx, by, bw, bh, r);
+    ctx.stroke();
+
+    // Terminal nub
+    ctx.fillStyle = 'rgba(0,212,184,1)';
+    rr(bx + bw, cy - tipH / 2, tipW, tipH, 2);
+    ctx.fill();
+
+    // Percentage
+    const pct = Math.round(fill * 100);
+    ctx.fillStyle = 'rgba(0,212,184,1)';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = `${H * 0.13}px 'Space Mono', monospace`;
+    ctx.fillText(pct + '%', cx, cy + bh * 0.92);
+
+    // State label
+    const states = ['NEEDS SPACE', 'FADING', 'PRESENT', 'ENGAGED', 'ENERGIZED'];
+    const si = Math.min(4, Math.floor(fill * 5));
+    ctx.font = `${H * 0.09}px 'Space Mono', monospace`;
+    ctx.fillStyle = 'rgba(0,212,184,0.80)';
+    ctx.fillText(states[si], cx, cy - bh * 0.92);
+
+    requestAnimationFrame(draw);
+  }
+
+  draw();
+})();
 </script>
 </body>
 </html>
