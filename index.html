@@ -766,7 +766,7 @@
 
 <script type="module">
 import { PoseLandmarker, FaceLandmarker, FilesetResolver }
-  from 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14';
+  from '/vendor/vision_bundle.mjs';
 
 // ── Elements ─────────────────────────────────────────────────────────────────
 const cam       = document.getElementById('cam');
@@ -2022,14 +2022,14 @@ function updateStatus(n) {
 async function loadModels() {
   setLoadProgress(5);
   const vision = await FilesetResolver.forVisionTasks(
-    'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm'
+    '/models/wasm'
   );
   setLoadProgress(25);
 
   // Load pose first (more critical)
   poseLandmarker = await PoseLandmarker.createFromOptions(vision, {
     baseOptions: {
-      modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task',
+      modelAssetPath: '/models/pose_landmarker_lite.task',
       delegate: 'GPU',
     },
     runningMode: 'VIDEO',
@@ -2044,7 +2044,7 @@ async function loadModels() {
   // Load face async (enhancement)
   FaceLandmarker.createFromOptions(vision, {
     baseOptions: {
-      modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task',
+      modelAssetPath: '/models/face_landmarker.task',
       delegate: 'GPU',
     },
     runningMode: 'VIDEO',
