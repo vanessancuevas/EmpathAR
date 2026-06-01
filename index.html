@@ -2215,7 +2215,7 @@ document.getElementById('mode-dog').addEventListener('click', () => {
 // any existing rendering functions.
 // ─────────────────────────────────────────────────────────────────────────────
 
-const DOG_MODEL_URL  = '/models/dog-pose.onnx';
+const DOG_MODEL_URL  = '/models/dog-pose-int8.onnx';
 const ORT_CDN        = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.18.0/dist/ort.min.js';
 const DOG_MATCH_DIST = 300; // canvas-px radius to re-identify a returning dog
 const DOG_EXPIRE_MS  = 3000;
