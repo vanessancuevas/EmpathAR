@@ -381,10 +381,19 @@
     }
 
     /* ── Mode toggle ── */
-    #mode-toggle {
+    #top-right-controls {
       position: absolute;
-      top: 14px; left: 50%;
-      transform: translateX(-50%);
+      top: 14px; right: 14px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 8px;
+      pointer-events: all;
+      z-index: 5;
+    }
+    #mode-toggle {
+      position: static;
+      transform: none;
       display: flex;
       background: rgba(3,13,18,0.82);
       backdrop-filter: blur(8px);
@@ -511,11 +520,8 @@
       .legend-desc { font-size: 0.625rem; }
     }
 
-    /* ── Notification tab (top-right trigger) ── */
+    /* ── Notification tab (inside top-right-controls) ── */
     #notif-tab {
-      position: absolute;
-      top: 14px; right: 14px;
-      z-index: 5;
       display: flex;
       align-items: center;
       gap: 6px;
@@ -701,10 +707,13 @@
 
 <div id="hud">
   <div id="loading-bar-wrap"><div id="loading-bar"></div></div>
-  <div id="mode-toggle">
-    <span id="mode-pill"></span>
-    <button class="mode-opt active" id="mode-human">Human</button>
-    <button class="mode-opt" id="mode-dog">Dog</button>
+  <div id="top-right-controls">
+    <div id="mode-toggle">
+      <span id="mode-pill"></span>
+      <button class="mode-opt active" id="mode-human">Human</button>
+      <button class="mode-opt" id="mode-dog">Dog</button>
+    </div>
+    <button id="notif-tab" class="hud-btn">Tips <span id="notif-badge">0</span></button>
   </div>
   <div id="status">Loading models…</div>
   <div id="legend" class="collapsed">
@@ -736,9 +745,6 @@
       </div>
     </div>
   </div>
-  <!-- Notification tab -->
-  <button id="notif-tab" class="hud-btn">Tips <span id="notif-badge">0</span></button>
-
   <!-- Drawer backdrop -->
   <div id="notif-overlay"></div>
 
