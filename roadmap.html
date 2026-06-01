@@ -281,7 +281,7 @@
     <div class="launch-card"><div class="br"></div>
       <div class="launch-eyebrow">Just Shipped // Jun 2026 // Dog Mode v1.0</div>
       <div class="launch-title">Dog Mode is Live.</div>
-      <p>Point the camera at a dog and a pose skeleton appears — bones, joints, energy state — the same way it does for people. We built a two-stage inference pipeline that mirrors how Google's MediaPipe works under the hood: a cheap detector finds the dog first, then a custom-trained pose model runs only on that cropped region. We matched MediaPipe's core architecture — Web Worker isolation, detect-then-crop, compact quantized models (7 MB total). The one remaining gap is the runtime: MediaPipe runs on a hand-tuned C++ WASM engine optimised for mobile; we're on onnxruntime-web, which is capable but not as fast on-device yet.</p>
+      <p>Point the camera at a dog and a pose skeleton appears — bones, joints, energy state — the same way it does for people. We built a two-stage inference pipeline that mirrors how Google's MediaPipe works under the hood: a cheap detector finds the dog first, then a custom-trained pose model runs only on that cropped region. We matched MediaPipe's core architecture — Web Worker isolation, detect-then-crop, compact quantized models (7 MB total).</p>
 
       <div class="launch-grid">
         <div class="launch-block">
