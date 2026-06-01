@@ -17,8 +17,8 @@ const MODEL_POSE   = '/models/dog-pose-fp32-320.onnx';
 const INPUT_SIZE   = 320;
 const DOG_CLASS    = 16;     // COCO class index for dog
 const NUM_KP       = 24;
-const DETECT_CONF  = 0.4;
-const POSE_CONF    = 0.5;
+const DETECT_CONF  = 0.25;
+const POSE_CONF    = 0.35;
 const NMS_IOU      = 0.45;
 const CROP_MARGIN  = 0.35;   // padding around detected bbox before cropping
 const REDETECT_N   = 5;      // run Stage 1 every N pose inferences
@@ -115,6 +115,8 @@ async function detectDog(bitmap, vw, vh) {
   for (const det of raw) {
     if (!kept.some(k => iouRect(det, k) > NMS_IOU)) kept.push(det);
   }
+  if (kept.length > 0) console.log(`[detect] dog conf=${kept[0].conf.toFixed(2)} bbox=${JSON.stringify(kept[0])}`);
+  else console.log(`[detect] no dog — top raw: ${raw.length > 0 ? raw[0].conf.toFixed(3) : 'none'}`);
   return kept.length > 0 ? kept[0] : null;
 }
 
