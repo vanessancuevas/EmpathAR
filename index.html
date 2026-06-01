@@ -2186,7 +2186,7 @@ function activateHumanMode() {
   dogInferenceActive   = false;
   humanInferenceActive = true;
   if (dogWorker) { dogWorker.terminate(); dogWorker = null; dogModelLoaded = false; }
-  lastDogs = []; lastLb = null; dogInferencePending = false;
+  lastDogs = []; lastLb = null; lastDogsTs = 0; dogInferencePending = false;
   Object.keys(personStates).forEach(k => delete personStates[k]);
   trackedPersons.length = 0;
   document.getElementById('status').textContent = 'Scanning…';
@@ -2343,6 +2343,8 @@ let dogWorker         = null;
 let dogInferencePending = false;
 let lastDogs          = [];
 let lastLb            = null;
+let lastDogsTs        = 0;   // timestamp of last real detection
+const DOG_PERSIST_MS  = 3000; // keep skeleton visible for 3s after last detection
 
 function initAnimalModel() {
   if (dogModelLoaded) return;
@@ -2358,8 +2360,11 @@ function initAnimalModel() {
       statusEl.textContent = 'Dog Mode — Scanning';
     }
     if (data.type === 'result') {
-      lastDogs = data.dogs;
-      lastLb   = data.lb;
+      if (data.dogs.length > 0) {
+        lastDogs   = data.dogs;
+        lastLb     = data.lb;
+        lastDogsTs = performance.now();
+      }
       dogInferencePending = false;
     }
     if (data.type === 'error') {
@@ -2549,6 +2554,8 @@ function dogRenderLoop() {
 
   // Render every frame using the latest result from the worker
   const now = performance.now();
+  // Expire skeleton only after DOG_PERSIST_MS with no real detection
+  if (lastDogsTs > 0 && now - lastDogsTs > DOG_PERSIST_MS) lastDogs = [];
   const map = getVideoMapping();
   const lb  = lastLb || getDogLetterbox();
   const dogs = lastDogs;
