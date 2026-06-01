@@ -2185,6 +2185,8 @@ function activateAnimalMode() {
 function activateHumanMode() {
   dogInferenceActive   = false;
   humanInferenceActive = true;
+  if (dogWorker) { dogWorker.terminate(); dogWorker = null; dogModelLoaded = false; }
+  lastDogs = []; lastLb = null; dogInferencePending = false;
   Object.keys(personStates).forEach(k => delete personStates[k]);
   trackedPersons.length = 0;
   document.getElementById('status').textContent = 'Scanning…';
@@ -2215,8 +2217,6 @@ document.getElementById('mode-dog').addEventListener('click', () => {
 // any existing rendering functions.
 // ─────────────────────────────────────────────────────────────────────────────
 
-const DOG_MODEL_URL  = '/models/dog-pose-int8.onnx';
-const ORT_CDN        = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.18.0/dist/ort.min.js';
 const DOG_MATCH_DIST = 300; // canvas-px radius to re-identify a returning dog
 const DOG_EXPIRE_MS  = 3000;
 
@@ -2338,50 +2338,43 @@ function drawDogBatteryIndicator(x, y, battery, dogId) {
   }
 }
 
-let dogModelLoaded  = false;
-let dogSession      = null;
+let dogModelLoaded    = false;
+let dogWorker         = null;
+let dogInferencePending = false;
+let lastDogs          = [];
+let lastLb            = null;
 
-async function initAnimalModel() {
+function initAnimalModel() {
   if (dogModelLoaded) return;
 
   const statusEl = document.getElementById('status');
   statusEl.textContent = 'Dog Mode — Loading model…';
 
-  await loadOrtScript();
+  dogWorker = new Worker('/dog-worker.js');
 
-  try {
-    dogSession = await ort.InferenceSession.create(DOG_MODEL_URL, {
-      executionProviders: ['webgpu', 'webgl', 'wasm'],
-    });
-    dogModelLoaded = true;
-    statusEl.textContent = 'Dog Mode — Scanning';
-  } catch (e) {
-    statusEl.textContent = 'Dog Mode — Model failed to load';
-    console.error('[AnimalMode] session create failed:', e);
-  }
-}
+  dogWorker.onmessage = ({ data }) => {
+    if (data.type === 'ready') {
+      dogModelLoaded = true;
+      statusEl.textContent = 'Dog Mode — Scanning';
+    }
+    if (data.type === 'result') {
+      lastDogs = data.dogs;
+      lastLb   = data.lb;
+      dogInferencePending = false;
+    }
+    if (data.type === 'error') {
+      statusEl.textContent = 'Dog Mode — Model failed to load';
+      console.error('[AnimalMode] worker error:', data.message);
+    }
+  };
 
-function loadOrtScript() {
-  return new Promise((resolve, reject) => {
-    if (window.ort) { resolve(); return; }
-    const s = document.createElement('script');
-    s.src = ORT_CDN;
-    s.onload  = resolve;
-    s.onerror = () => reject(new Error('onnxruntime-web failed to load'));
-    document.head.appendChild(s);
-  });
+  dogWorker.postMessage({ type: 'init' });
 }
 
 // ── Dog inference pipeline ────────────────────────────────────────────────────
 
 const DOG_INPUT_SIZE = 640;
 const DOG_NUM_KP     = 24;
-const DOG_CONF_THRESH = 0.5;
-const DOG_NMS_IOU     = 0.45;
-
-const dogInputCanvas = document.createElement('canvas');
-dogInputCanvas.width = dogInputCanvas.height = DOG_INPUT_SIZE;
-const dogInputCtx = dogInputCanvas.getContext('2d', { willReadFrequently: true });
 
 // Letterbox: fit video into 640×640 preserving aspect ratio
 function getDogLetterbox() {
@@ -2533,72 +2526,32 @@ function drawDogSkeleton(keypoints, lb, map, color, glowColor) {
   ctx.restore();
 }
 
-async function runDogInference(video) {
-  if (!dogSession) return [];
-
-  const lb = getDogLetterbox();
-
-  // Draw letterboxed frame onto 640×640 input canvas
-  dogInputCtx.fillStyle = '#808080';
-  dogInputCtx.fillRect(0, 0, DOG_INPUT_SIZE, DOG_INPUT_SIZE);
-  dogInputCtx.drawImage(video, lb.padX, lb.padY, lb.newW, lb.newH);
-
-  // Build CHW Float32 tensor normalised to [0,1]
-  const pixels = dogInputCtx.getImageData(0, 0, DOG_INPUT_SIZE, DOG_INPUT_SIZE).data;
-  const N      = DOG_INPUT_SIZE * DOG_INPUT_SIZE;
-  const tensor = new Float32Array(3 * N);
-  for (let i = 0; i < N; i++) {
-    tensor[i]         = pixels[i * 4]     / 255; // R
-    tensor[i + N]     = pixels[i * 4 + 1] / 255; // G
-    tensor[i + N * 2] = pixels[i * 4 + 2] / 255; // B
-  }
-
-  const feed   = { images: new ort.Tensor('float32', tensor, [1, 3, DOG_INPUT_SIZE, DOG_INPUT_SIZE]) };
-  const result = await dogSession.run(feed);
-  const out    = result['output0'].data; // [1, 77, 8400] flattened
-  const A      = 8400; // anchors
-
-  // Parse raw detections
-  const raw = [];
-  for (let i = 0; i < A; i++) {
-    const conf = out[4 * A + i];
-    if (conf < DOG_CONF_THRESH) continue;
-
-    const keypoints = [];
-    for (let k = 0; k < DOG_NUM_KP; k++) {
-      const base = (5 + k * 3) * A + i;
-      keypoints.push({ x: out[base], y: out[base + A], conf: out[base + A * 2] });
-    }
-    raw.push({
-      bbox: { cx: out[0*A+i], cy: out[1*A+i], w: out[2*A+i], h: out[3*A+i], conf },
-      keypoints,
-    });
-  }
-
-  // NMS: keep highest-confidence, suppress overlapping boxes
-  raw.sort((a, b) => b.bbox.conf - a.bbox.conf);
-  const kept = [];
-  for (const det of raw) {
-    if (!kept.some(k => dogIou(det, k) > DOG_NMS_IOU)) kept.push(det);
-  }
-
-  return kept;
-}
-
 // ── Dog render loop ───────────────────────────────────────────────────────────
-async function dogRenderLoop() {
+function dogRenderLoop() {
   if (!animalMode) return; // stop when switched back to human
   requestAnimationFrame(dogRenderLoop);
 
-  if (!dogInferenceActive || !dogModelLoaded || cam.readyState < 2) return;
+  if (!dogInferenceActive || cam.readyState < 2) return;
 
-  dogFrameCount++;
-  if (dogFrameCount % 3 !== 0) return;
+  // Send a new frame to the worker whenever it's free
+  if (dogModelLoaded && !dogInferencePending) {
+    dogFrameCount++;
+    if (dogFrameCount % 6 === 0) {
+      createImageBitmap(cam).then(bitmap => {
+        dogInferencePending = true;
+        dogWorker.postMessage(
+          { type: 'infer', bitmap, vw: cam.videoWidth, vh: cam.videoHeight },
+          [bitmap] // transfer ownership — no copy
+        );
+      });
+    }
+  }
 
+  // Render every frame using the latest result from the worker
   const now = performance.now();
   const map = getVideoMapping();
-  const lb  = getDogLetterbox();
-  const dogs = await runDogInference(cam);
+  const lb  = lastLb || getDogLetterbox();
+  const dogs = lastDogs;
 
   ctx.clearRect(0, 0, W, H);
 
