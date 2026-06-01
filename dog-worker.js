@@ -9,8 +9,8 @@
 //                    { type: 'result', dogs: Detection[], lb: Letterbox }
 //                    { type: 'error', message: string }
 
-importScripts('https://cdn.jsdelivr.net/npm/onnxruntime-web@1.18.0/dist/ort.min.js');
-ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.18.0/dist/';
+importScripts('https://cdn.jsdelivr.net/npm/onnxruntime-web@1.21.0/dist/ort.min.js');
+ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.21.0/dist/';
 
 const MODEL_DETECT = '/models/dog-detect-fp32-320.onnx';
 const MODEL_POSE   = '/models/dog-pose-fp32-320.onnx';
@@ -81,9 +81,9 @@ function iouRect(a, b) {
 
 async function init() {
   try {
-    detectSession = await ort.InferenceSession.create(MODEL_DETECT, { executionProviders: ['wasm'] });
+    detectSession = await ort.InferenceSession.create(MODEL_DETECT, { executionProviders: ['webgl', 'wasm'] });
     console.log('[dog-worker] detect session ready');
-    poseSession   = await ort.InferenceSession.create(MODEL_POSE,   { executionProviders: ['wasm'] });
+    poseSession   = await ort.InferenceSession.create(MODEL_POSE,   { executionProviders: ['webgl', 'wasm'] });
     console.log('[dog-worker] pose session ready');
     postMessage({ type: 'ready' });
   } catch (e) {
