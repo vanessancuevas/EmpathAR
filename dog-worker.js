@@ -79,11 +79,16 @@ function iouRect(a, b) {
 
 // ── init ─────────────────────────────────────────────────────────────────────
 
+// Use WebGL on desktop, WASM-only on mobile (iOS Safari crashes with WebGL + large models)
+const isMobile = /iPhone|iPad|Android/i.test(self.navigator?.userAgent ?? '');
+const EXEC_PROVIDERS = isMobile ? ['wasm'] : ['webgl', 'wasm'];
+
 async function init() {
   try {
-    detectSession = await ort.InferenceSession.create(MODEL_DETECT, { executionProviders: ['webgl', 'wasm'] });
+    // Load sequentially — parallel loading peaks memory and crashes mobile WebKit
+    detectSession = await ort.InferenceSession.create(MODEL_DETECT, { executionProviders: EXEC_PROVIDERS });
     console.log('[dog-worker] detect session ready');
-    poseSession   = await ort.InferenceSession.create(MODEL_POSE,   { executionProviders: ['webgl', 'wasm'] });
+    poseSession   = await ort.InferenceSession.create(MODEL_POSE,   { executionProviders: EXEC_PROVIDERS });
     console.log('[dog-worker] pose session ready');
     postMessage({ type: 'ready' });
   } catch (e) {
