@@ -12,8 +12,8 @@
 importScripts('https://cdn.jsdelivr.net/npm/onnxruntime-web@1.18.0/dist/ort.min.js');
 ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.18.0/dist/';
 
-const MODEL_DETECT = '/models/dog-detect-fp16-320.onnx';
-const MODEL_POSE   = '/models/dog-pose-fp16-320.onnx';
+const MODEL_DETECT = '/models/dog-detect-fp32-320.onnx';
+const MODEL_POSE   = '/models/dog-pose-fp32-320.onnx';
 const INPUT_SIZE   = 320;
 const DOG_CLASS    = 16;     // COCO class index for dog
 const NUM_KP       = 24;
