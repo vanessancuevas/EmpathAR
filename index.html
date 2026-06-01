@@ -2237,6 +2237,11 @@ function computeDogCentroid(keypoints, lb, map) {
 }
 
 function matchDogs(detections, lb, map, now) {
+  // Expire stale dogs FIRST so indices assigned below are stable
+  for (let i = trackedDogs.length - 1; i >= 0; i--) {
+    if (now - trackedDogs[i].lastSeen > DOG_EXPIRE_MS) trackedDogs.splice(i, 1);
+  }
+
   const centroids  = detections.map(d => computeDogCentroid(d.keypoints, lb, map));
   const detToTIdx  = new Array(detections.length).fill(-1);
   const takenT     = new Set();
@@ -2276,11 +2281,6 @@ function matchDogs(detections, lb, map, now) {
     trackedDogs[tIdx].centroid = c;
     trackedDogs[tIdx].lastSeen = now;
   });
-
-  // Expire dogs not seen recently
-  for (let i = trackedDogs.length - 1; i >= 0; i--) {
-    if (now - trackedDogs[i].lastSeen > DOG_EXPIRE_MS) trackedDogs.splice(i, 1);
-  }
 
   return detToTIdx;
 }
