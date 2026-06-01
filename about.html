@@ -333,7 +333,7 @@
     <div class="section">
       <div class="section-label">System // How It Works</div>
       <div class="section-title">Three Signals. One Battery.</div>
-      <p>The app uses Google MediaPipe, an on-device machine learning framework, to run two models simultaneously: a pose landmarker and a face landmarker. No data leaves your device.</p>
+      <p>The app uses Google MediaPipe, a browser-based machine learning runtime, to run two models simultaneously: a pose landmarker and a face landmarker. All processing happens locally in your browser — no data leaves your device.</p>
 
       <div class="signal-grid" style="margin-top:20px">
         <div class="signal-card bracketed">
@@ -356,7 +356,7 @@
         </div>
       </div>
 
-      <p style="margin-top:20px">These three signals are weighted and blended into a single 0-100% Social Battery score using an asymmetric smoothing algorithm. Charge is gradual, drain is immediate, mirroring how social energy actually works.</p>
+      <p style="margin-top:20px">These three signals are weighted and blended into a single 0–100% Social Battery score using an asymmetric smoothing algorithm. Each frame, the raw score is blended gradually into the current battery value rather than applied instantly — this prevents flickering from a single frame of input. The blend rate is intentionally asymmetric: charging is slower, draining is faster. A smile or burst of movement doesn't spike the battery immediately — it has to be sustained. But disengagement responds more quickly, mirroring how social energy actually works.</p>
     </div>
 
     <hr class="divider">
