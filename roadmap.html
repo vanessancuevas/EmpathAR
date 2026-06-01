@@ -217,12 +217,11 @@
       line-height: 1.2;
     }
     .launch-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
       margin-top: 20px;
     }
-    @media (max-width: 560px) { .launch-grid { grid-template-columns: 1fr; } }
     .launch-block-label {
       font-family: var(--font-m);
       font-size: 0.65rem;
@@ -282,42 +281,24 @@
     <div class="launch-card"><div class="br"></div>
       <div class="launch-eyebrow">Just Shipped // Jun 2026 // Dog Mode v1.0</div>
       <div class="launch-title">Dog Mode is Live.</div>
-      <p>EmpathAR can now read your dog's social battery in real time. Point the camera at a dog and a pose skeleton appears — bones, joints, energy state — the same way it does for people. We built this from the ground up in a single session, training a custom pose model and engineering an inference pipeline that mirrors how Google's MediaPipe works under the hood. Here's the honest breakdown.</p>
+      <p>Point the camera at a dog and a pose skeleton appears — bones, joints, energy state — the same way it does for people. We built a two-stage inference pipeline that mirrors how Google's MediaPipe works under the hood: a cheap detector finds the dog first, then a custom-trained pose model runs only on that cropped region. We matched MediaPipe's core architecture — Web Worker isolation, detect-then-crop, compact quantized models (7 MB total). The one remaining gap is the runtime: MediaPipe runs on a hand-tuned C++ WASM engine optimised for mobile; we're on onnxruntime-web, which is capable but not as fast on-device yet.</p>
 
       <div class="launch-grid">
         <div class="launch-block">
-          <div class="launch-block-label">What we built</div>
+          <div class="launch-block-label">How it works</div>
           <ul>
-            <li>A custom dog pose model fine-tuned on a 24-keypoint quadruped skeleton — trained from scratch, not borrowed</li>
-            <li>A two-stage detect-then-crop pipeline: a cheap detector finds the dog first, then the heavier pose model runs only on that region. This is exactly how MediaPipe's human pipeline works — and why it feels instant</li>
-            <li>A Web Worker that runs all inference off the main thread, so the UI never blocks — another core MediaPipe architectural pattern</li>
-            <li>Static INT8 quantization to get both models down to 7 MB total, within iOS Safari memory limits</li>
+            <li>A lightweight COCO detector (3.3 MB) scans the full frame to locate the dog</li>
+            <li>A custom pose model (3.6 MB), fine-tuned on a 24-keypoint quadruped skeleton, runs only on the cropped region — not the full frame</li>
+            <li>Both models run in a Web Worker so the UI never blocks</li>
+            <li>Everything runs on-device — no frames leave your phone</li>
           </ul>
         </div>
         <div class="launch-block">
-          <div class="launch-block-label">How close we got to MediaPipe</div>
+          <div class="launch-block-label">Limitations & what's next</div>
           <ul>
-            <li>Web Worker isolation — matched</li>
-            <li>Two-stage detect + crop pipeline — matched</li>
-            <li>Compact quantized models (~7 MB total vs MediaPipe's ~9 MB) — matched</li>
-            <li>EMA keypoint smoothing between frames — matched</li>
-            <li class="warn">Runtime engine: MediaPipe uses a custom C++ WASM engine tuned for mobile. We're on onnxruntime-web — capable, but not as fast on-device</li>
-          </ul>
-        </div>
-        <div class="launch-block">
-          <div class="launch-block-label">Current limitations</div>
-          <ul>
-            <li class="warn">Lying-down and top-down poses often miss — the training set is mostly standing dogs. A data gap, not a model failure</li>
-            <li class="warn">Mobile inference is slower than human mode — CPU-only on iOS until we swap the runtime</li>
+            <li class="warn">Lying-down and top-down poses often miss — the training set is mostly standing dogs. A data gap, not a model failure. Fix: retrain on overhead and resting-pose examples</li>
+            <li class="warn">Mobile inference is slower than human mode — CPU-only on iOS until we swap to the TFLite runtime (estimated 2–3× speedup)</li>
             <li class="warn">Small or partially occluded dogs may not be detected</li>
-          </ul>
-        </div>
-        <div class="launch-block">
-          <div class="launch-block-label">What's left to close the gap</div>
-          <ul>
-            <li>TFLite runtime swap — move from onnxruntime-web to the same engine MediaPipe uses. Estimated 2–3× speed improvement on mobile</li>
-            <li>Retrain on lying-down and overhead-view examples to fix the pose gap for dogs like Chewy</li>
-            <li>Breed and coat colour accuracy improvements across edge cases</li>
           </ul>
         </div>
       </div>
