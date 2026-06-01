@@ -380,6 +380,49 @@
       position: absolute; bottom: 24px; right: 14px;
     }
 
+    /* ── Mode toggle ── */
+    #mode-toggle {
+      position: absolute;
+      top: 14px; left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      background: rgba(3,13,18,0.82);
+      backdrop-filter: blur(8px);
+      border: 1px solid var(--accent-bd);
+      border-radius: 999px;
+      padding: 3px;
+      pointer-events: all;
+      user-select: none;
+    }
+    #mode-pill {
+      position: absolute;
+      top: 3px; bottom: 3px; left: 3px;
+      width: calc(50% - 3px);
+      border-radius: 999px;
+      background: var(--accent);
+      transition: transform 0.2s ease;
+      pointer-events: none;
+    }
+    #mode-toggle.dog-active #mode-pill { transform: translateX(100%); }
+    .mode-opt {
+      position: relative; z-index: 1;
+      padding: 5px 18px;
+      font-family: var(--font-m);
+      font-size: 0.58rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      cursor: pointer;
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      transition: color 0.2s ease;
+      white-space: nowrap;
+      border-radius: 999px;
+    }
+    .mode-opt.active { color: var(--bg); }
+    @media (max-width: 480px) {
+      .mode-opt { padding: 4px 12px; font-size: 0.52rem; }
+    }
 
     /* ── Battery ── */
     .battery-wrap {
@@ -658,6 +701,11 @@
 
 <div id="hud">
   <div id="loading-bar-wrap"><div id="loading-bar"></div></div>
+  <div id="mode-toggle">
+    <span id="mode-pill"></span>
+    <button class="mode-opt active" id="mode-human">Human</button>
+    <button class="mode-opt" id="mode-dog">Dog</button>
+  </div>
   <div id="status">Loading models…</div>
   <div id="legend" class="collapsed">
     <div class="legend-title">Social Battery</div>
@@ -788,6 +836,9 @@ let W = window.innerWidth, H = window.innerHeight;
 let showSkeleton = false;
 let poseLandmarker = null, faceLandmarker = null;
 let modelsReady = 0;
+let animalMode = false;
+let humanInferenceActive = true;
+let dogInferenceActive   = false;
 
 // Per-person smoothed state (keyed by detection index)
 const personStates = {};
@@ -1865,6 +1916,7 @@ function getLitFrame() {
 function detect() {
   requestAnimationFrame(detect);
 
+  if (!humanInferenceActive) return;
   if (!poseLandmarker || cam.readyState < 2) return;
   if (cam.currentTime === lastVideoTime) return;
   lastVideoTime = cam.currentTime;
@@ -2114,6 +2166,480 @@ document.getElementById('start-btn').addEventListener('click', async () => {
 
 if (new URLSearchParams(location.search).get('autostart') === '1')
   document.getElementById('start-btn').click();
+
+// ── Mode toggle ───────────────────────────────────────────────────────────────
+const modeToggle = document.getElementById('mode-toggle');
+const modePill   = document.getElementById('mode-pill');
+
+function activateAnimalMode() {
+  humanInferenceActive = false;
+  dogInferenceActive   = true;
+  Object.keys(personStates).forEach(k => delete personStates[k]);
+  trackedPersons.length = 0;
+  ctx.clearRect(0, 0, W, H);
+  document.getElementById('status').textContent = 'Dog Mode — Scanning';
+  initAnimalModel();
+  dogRenderLoop();
+}
+
+function activateHumanMode() {
+  dogInferenceActive   = false;
+  humanInferenceActive = true;
+  Object.keys(personStates).forEach(k => delete personStates[k]);
+  trackedPersons.length = 0;
+  document.getElementById('status').textContent = 'Scanning…';
+}
+
+document.getElementById('mode-human').addEventListener('click', () => {
+  if (animalMode === false) return;
+  animalMode = false;
+  modeToggle.classList.remove('dog-active');
+  document.getElementById('mode-human').classList.add('active');
+  document.getElementById('mode-dog').classList.remove('active');
+  activateHumanMode();
+});
+
+document.getElementById('mode-dog').addEventListener('click', () => {
+  if (animalMode === true) return;
+  animalMode = true;
+  modeToggle.classList.add('dog-active');
+  document.getElementById('mode-dog').classList.add('active');
+  document.getElementById('mode-human').classList.remove('active');
+  activateAnimalMode();
+});
+
+// ── ANIMAL MODE ───────────────────────────────────────────────────────────────
+// All dog pipeline code lives below this line.
+// Never modify human mode functions above: computePostureScore,
+// computeFaceScore, computeMovementScore, updateState, detect(), or
+// any existing rendering functions.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const DOG_MODEL_URL  = '/models/dog-pose.onnx';
+const ORT_CDN        = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.18.0/dist/ort.min.js';
+const DOG_MATCH_DIST = 300; // canvas-px radius to re-identify a returning dog
+const DOG_EXPIRE_MS  = 3000;
+
+// ── Dog identity state ────────────────────────────────────────────────────────
+const trackedDogs = [];
+let nextDogId     = 1;
+let dogFrameCount = 0;
+
+function computeDogCentroid(keypoints, lb, map) {
+  const pts = keypoints
+    .filter(kp => kp && kp.conf >= DOG_KP_CONF)
+    .map(kp => dogModelToCanvas(kp.x, kp.y, lb, map));
+  if (pts.length < 3) return null;
+  return {
+    x: pts.reduce((s, p) => s + p.x, 0) / pts.length,
+    y: pts.reduce((s, p) => s + p.y, 0) / pts.length,
+  };
+}
+
+function matchDogs(detections, lb, map, now) {
+  const centroids  = detections.map(d => computeDogCentroid(d.keypoints, lb, map));
+  const detToTIdx  = new Array(detections.length).fill(-1);
+  const takenT     = new Set();
+
+  // Centroid-proximity matching — sorted closest-first
+  const cands = [];
+  centroids.forEach((c, dIdx) => {
+    if (!c) return;
+    trackedDogs.forEach((dog, tIdx) => {
+      const d = Math.hypot(c.x - dog.centroid.x, c.y - dog.centroid.y);
+      if (d < DOG_MATCH_DIST) cands.push([d, dIdx, tIdx]);
+    });
+  });
+  cands.sort((a, b) => a[0] - b[0]);
+  for (const [, dIdx, tIdx] of cands) {
+    if (detToTIdx[dIdx] >= 0 || takenT.has(tIdx)) continue;
+    detToTIdx[dIdx] = tIdx;
+    takenT.add(tIdx);
+  }
+
+  // Assign new IDs to unmatched detections
+  centroids.forEach((c, dIdx) => {
+    if (!c || detToTIdx[dIdx] >= 0) return;
+    trackedDogs.push({
+      id:        nextDogId++,
+      centroid:  c,
+      state:     { battery: 0.65, prev: null },
+      lastSeen:  now,
+    });
+    detToTIdx[dIdx] = trackedDogs.length - 1;
+  });
+
+  // Update centroids for matched dogs
+  centroids.forEach((c, dIdx) => {
+    const tIdx = detToTIdx[dIdx];
+    if (tIdx < 0 || !c) return;
+    trackedDogs[tIdx].centroid = c;
+    trackedDogs[tIdx].lastSeen = now;
+  });
+
+  // Expire dogs not seen recently
+  for (let i = trackedDogs.length - 1; i >= 0; i--) {
+    if (now - trackedDogs[i].lastSeen > DOG_EXPIRE_MS) trackedDogs.splice(i, 1);
+  }
+
+  return detToTIdx;
+}
+
+// ── Dog battery overlay (parallel to drawBatteryIndicator, "D" prefix) ────────
+function drawDogBatteryIndicator(x, y, battery, dogId) {
+  const lvl   = levelFor(battery);
+  const BW = 130, BH = 32, TERM = 8, R = 8;
+  const by = y - BH, bx = x - BW / 2;
+  const labelCY = by - 14;
+
+  const pillText = `D${dogId}  ${lvl.label}`;
+  ctx.save();
+  ctx.font = '600 12px Space Mono, monospace';
+  const lw = ctx.measureText(pillText).width + 22;
+  ctx.beginPath();
+  ctx.roundRect(x - lw / 2, labelCY - 10, lw, 20, 10);
+  ctx.fillStyle = 'rgba(0,0,0,0.62)';
+  ctx.fill();
+  ctx.fillStyle = lvl.color;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(pillText, x, labelCY);
+  ctx.restore();
+
+  ctx.save();
+  ctx.shadowColor = lvl.glow;
+  ctx.shadowBlur  = 18;
+  ctx.beginPath();
+  ctx.roundRect(bx, by, BW, BH, R);
+  ctx.fillStyle = 'rgba(0,0,0,0.65)';
+  ctx.fill();
+  ctx.strokeStyle = lvl.color;
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.roundRect(bx + BW + 1, by + BH * 0.3, TERM, BH * 0.4, 3);
+  ctx.fillStyle = lvl.color;
+  ctx.fill();
+  ctx.restore();
+
+  const fillW = (BW - 6) * battery;
+  if (fillW > 0) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.roundRect(bx + 3, by + 3, fillW, BH - 6, Math.max(0, R - 3));
+    const grad = ctx.createLinearGradient(bx + 3, 0, bx + 3 + fillW, 0);
+    grad.addColorStop(0, lvl.glow);
+    grad.addColorStop(1, lvl.color);
+    ctx.fillStyle = grad;
+    ctx.shadowColor = lvl.glow;
+    ctx.shadowBlur  = 12;
+    ctx.fill();
+    ctx.restore();
+  }
+}
+
+let dogModelLoaded  = false;
+let dogSession      = null;
+
+async function initAnimalModel() {
+  if (dogModelLoaded) return;
+
+  const statusEl = document.getElementById('status');
+  statusEl.textContent = 'Dog Mode — Loading model…';
+
+  await loadOrtScript();
+
+  try {
+    dogSession = await ort.InferenceSession.create(DOG_MODEL_URL, {
+      executionProviders: ['webgl', 'wasm'],
+    });
+    dogModelLoaded = true;
+    statusEl.textContent = 'Dog Mode — Scanning';
+  } catch (e) {
+    statusEl.textContent = 'Dog Mode — Model failed to load';
+    console.error('[AnimalMode] session create failed:', e);
+  }
+}
+
+function loadOrtScript() {
+  return new Promise((resolve, reject) => {
+    if (window.ort) { resolve(); return; }
+    const s = document.createElement('script');
+    s.src = ORT_CDN;
+    s.onload  = resolve;
+    s.onerror = () => reject(new Error('onnxruntime-web failed to load'));
+    document.head.appendChild(s);
+  });
+}
+
+// ── Dog inference pipeline ────────────────────────────────────────────────────
+
+const DOG_INPUT_SIZE = 640;
+const DOG_NUM_KP     = 24;
+const DOG_CONF_THRESH = 0.5;
+const DOG_NMS_IOU     = 0.45;
+
+const dogInputCanvas = document.createElement('canvas');
+dogInputCanvas.width = dogInputCanvas.height = DOG_INPUT_SIZE;
+const dogInputCtx = dogInputCanvas.getContext('2d', { willReadFrequently: true });
+
+// Letterbox: fit video into 640×640 preserving aspect ratio
+function getDogLetterbox() {
+  const vw    = cam.videoWidth  || DOG_INPUT_SIZE;
+  const vh    = cam.videoHeight || DOG_INPUT_SIZE;
+  const scale = Math.min(DOG_INPUT_SIZE / vw, DOG_INPUT_SIZE / vh);
+  const newW  = Math.round(vw * scale);
+  const newH  = Math.round(vh * scale);
+  return { scale, newW, newH, padX: (DOG_INPUT_SIZE - newW) / 2, padY: (DOG_INPUT_SIZE - newH) / 2 };
+}
+
+// Map model 640px coords → display canvas coords
+function dogModelToCanvas(mx, my, lb, map) {
+  const nx = ((mx - lb.padX) / lb.scale) / (cam.videoWidth  || DOG_INPUT_SIZE);
+  const ny = ((my - lb.padY) / lb.scale) / (cam.videoHeight || DOG_INPUT_SIZE);
+  return { x: nx * map.scaleX + map.offX, y: ny * map.scaleY + map.offY };
+}
+
+function dogIou(a, b) {
+  const ax1 = a.bbox.cx - a.bbox.w / 2, ay1 = a.bbox.cy - a.bbox.h / 2;
+  const ax2 = a.bbox.cx + a.bbox.w / 2, ay2 = a.bbox.cy + a.bbox.h / 2;
+  const bx1 = b.bbox.cx - b.bbox.w / 2, by1 = b.bbox.cy - b.bbox.h / 2;
+  const bx2 = b.bbox.cx + b.bbox.w / 2, by2 = b.bbox.cy + b.bbox.h / 2;
+  const ix   = Math.max(0, Math.min(ax2, bx2) - Math.max(ax1, bx1));
+  const iy   = Math.max(0, Math.min(ay2, by2) - Math.max(ay1, by1));
+  const inter = ix * iy;
+  const union = (ax2-ax1)*(ay2-ay1) + (bx2-bx1)*(by2-by1) - inter;
+  return union > 0 ? inter / union : 0;
+}
+
+// ── Dog skeleton drawing ──────────────────────────────────────────────────────
+
+const DOG_BONES = [
+  // Head
+  [16,17],[16,18],[16,19],[18,14],[19,15],[17,23],[23,22],
+  // Spine + tail
+  [22,12],[12,13],
+  // Front left leg:  withers → elbow → knee → paw
+  [22,2],[2,1],[1,0],
+  // Front right leg: withers → elbow → knee → paw
+  [22,8],[8,7],[7,6],
+  // Back left leg:   tail_start → elbow(hip) → knee → paw
+  [12,5],[5,4],[4,3],
+  // Back right leg:  tail_start → elbow(hip) → knee → paw
+  [12,11],[11,10],[10,9],
+];
+const DOG_LARGE_DOTS = new Set([18, 19, 13]); // left_ear_tip, right_ear_tip, tail_end
+const DOG_KP_CONF    = 0.4;
+
+// ── Dog battery scoring ───────────────────────────────────────────────────────
+
+const DOG_MOVE_KP = [16, 12, 22, 0, 6, 3, 9]; // nose, tail_start, withers, 4 paws
+
+function computeDogMovement(cur, prev) {
+  if (!prev) return 0.5;
+  let total = 0, n = 0;
+  DOG_MOVE_KP.forEach(i => {
+    if (cur[i] && prev[i] && cur[i].conf > DOG_KP_CONF && prev[i].conf > DOG_KP_CONF) {
+      const dx = (cur[i].x - prev[i].x) / 640;
+      const dy = (cur[i].y - prev[i].y) / 640;
+      total += Math.sqrt(dx * dx + dy * dy);
+      n++;
+    }
+  });
+  const avg = n ? total / n : 0;
+  return Math.min(0.25 + (avg / 0.04) * 0.75, 1.0);
+}
+
+function computeDogBattery(keypoints, prevKeypoints, state) {
+  const kp = keypoints;
+
+  // ── Tail angle (0.35) ─────────────────────────────────────────────────────
+  let tailScore = 0.5; // neutral default
+  const tb = kp[12], te = kp[13], w = kp[22]; // tail_start, tail_end, withers
+  if (tb && te && w && tb.conf >= DOG_KP_CONF && te.conf >= DOG_KP_CONF && w.conf >= DOG_KP_CONF) {
+    const spineLen = Math.hypot(w.x - tb.x, w.y - tb.y) + 0.001;
+    // tailRise: positive = tail above tail_start (screen Y is inverted)
+    const tailRise = (tb.y - te.y) / spineLen;
+    tailScore = Math.max(0, Math.min(1, (tailRise + 0.4) / 0.9));
+  }
+
+  // ── Ear position (0.25) ───────────────────────────────────────────────────
+  let earScore = 0.5;
+  const lt = kp[18], rt = kp[19], lb2 = kp[14], rb = kp[15];
+  if (lt && rt && lb2 && rb &&
+      lt.conf >= DOG_KP_CONF && rt.conf >= DOG_KP_CONF &&
+      lb2.conf >= DOG_KP_CONF && rb.conf >= DOG_KP_CONF) {
+    const spineLen = w && w.conf >= DOG_KP_CONF && tb && tb.conf >= DOG_KP_CONF
+      ? Math.hypot(w.x - tb.x, w.y - tb.y) + 0.001 : 80;
+    const leftRise  = (lb2.y - lt.y) / spineLen; // base.y - tip.y, positive = tip above base
+    const rightRise = (rb.y  - rt.y) / spineLen;
+    earScore = Math.max(0, Math.min(1, ((leftRise + rightRise) / 2) / 0.3));
+  }
+
+  // ── Body height (0.20) ────────────────────────────────────────────────────
+  let heightScore = 0.5;
+  const lh = kp[5], rh = kp[11]; // rear_left_elbow, rear_right_elbow (hip proxy)
+  if (w && lh && rh && w.conf >= DOG_KP_CONF && lh.conf >= DOG_KP_CONF && rh.conf >= DOG_KP_CONF) {
+    const spineLen = tb && tb.conf >= DOG_KP_CONF
+      ? Math.hypot(w.x - tb.x, w.y - tb.y) + 0.001 : 80;
+    const hipMidY  = (lh.y + rh.y) / 2;
+    const bodyRise = (hipMidY - w.y) / spineLen; // positive = withers above hips (good)
+    heightScore = Math.max(0, Math.min(1, bodyRise / 0.8));
+  }
+
+  // ── Movement (0.20) ───────────────────────────────────────────────────────
+  const movScore = computeDogMovement(kp, prevKeypoints);
+
+  // ── Weighted sum ──────────────────────────────────────────────────────────
+  const raw = tailScore * 0.35 + earScore * 0.25 + heightScore * 0.20 + movScore * 0.20;
+
+  // ── EMA smoothing (same constants as human pipeline) ──────────────────────
+  const s = raw < state.battery ? SMOOTH_DOWN : SMOOTH_UP;
+  state.battery += (raw - state.battery) * s;
+
+  return state.battery;
+}
+
+function drawDogSkeleton(keypoints, lb, map, color, glowColor) {
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.shadowColor = glowColor;
+  ctx.shadowBlur  = 8;
+  ctx.lineWidth   = 2;
+  ctx.lineCap     = 'round';
+
+  for (const [a, b] of DOG_BONES) {
+    const ka = keypoints[a], kb = keypoints[b];
+    if (!ka || !kb || ka.conf < DOG_KP_CONF || kb.conf < DOG_KP_CONF) continue;
+    const pa = dogModelToCanvas(ka.x, ka.y, lb, map);
+    const pb = dogModelToCanvas(kb.x, kb.y, lb, map);
+    ctx.beginPath();
+    ctx.moveTo(pa.x, pa.y);
+    ctx.lineTo(pb.x, pb.y);
+    ctx.stroke();
+  }
+
+  ctx.fillStyle = color;
+  for (let i = 0; i < keypoints.length; i++) {
+    const kp = keypoints[i];
+    if (!kp || kp.conf < DOG_KP_CONF) continue;
+    const p = dogModelToCanvas(kp.x, kp.y, lb, map);
+    const r = DOG_LARGE_DOTS.has(i) ? 4.5 : 3;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  ctx.restore();
+}
+
+async function runDogInference(video) {
+  if (!dogSession) return [];
+
+  const lb = getDogLetterbox();
+
+  // Draw letterboxed frame onto 640×640 input canvas
+  dogInputCtx.fillStyle = '#808080';
+  dogInputCtx.fillRect(0, 0, DOG_INPUT_SIZE, DOG_INPUT_SIZE);
+  dogInputCtx.drawImage(video, lb.padX, lb.padY, lb.newW, lb.newH);
+
+  // Build CHW Float32 tensor normalised to [0,1]
+  const pixels = dogInputCtx.getImageData(0, 0, DOG_INPUT_SIZE, DOG_INPUT_SIZE).data;
+  const N      = DOG_INPUT_SIZE * DOG_INPUT_SIZE;
+  const tensor = new Float32Array(3 * N);
+  for (let i = 0; i < N; i++) {
+    tensor[i]         = pixels[i * 4]     / 255; // R
+    tensor[i + N]     = pixels[i * 4 + 1] / 255; // G
+    tensor[i + N * 2] = pixels[i * 4 + 2] / 255; // B
+  }
+
+  const feed   = { images: new ort.Tensor('float32', tensor, [1, 3, DOG_INPUT_SIZE, DOG_INPUT_SIZE]) };
+  const result = await dogSession.run(feed);
+  const out    = result['output0'].data; // [1, 77, 8400] flattened
+  const A      = 8400; // anchors
+
+  // Parse raw detections
+  const raw = [];
+  for (let i = 0; i < A; i++) {
+    const conf = out[4 * A + i];
+    if (conf < DOG_CONF_THRESH) continue;
+
+    const keypoints = [];
+    for (let k = 0; k < DOG_NUM_KP; k++) {
+      const base = (5 + k * 3) * A + i;
+      keypoints.push({ x: out[base], y: out[base + A], conf: out[base + A * 2] });
+    }
+    raw.push({
+      bbox: { cx: out[0*A+i], cy: out[1*A+i], w: out[2*A+i], h: out[3*A+i], conf },
+      keypoints,
+    });
+  }
+
+  // NMS: keep highest-confidence, suppress overlapping boxes
+  raw.sort((a, b) => b.bbox.conf - a.bbox.conf);
+  const kept = [];
+  for (const det of raw) {
+    if (!kept.some(k => dogIou(det, k) > DOG_NMS_IOU)) kept.push(det);
+  }
+
+  return kept;
+}
+
+// ── Dog render loop ───────────────────────────────────────────────────────────
+async function dogRenderLoop() {
+  if (!animalMode) return; // stop when switched back to human
+  requestAnimationFrame(dogRenderLoop);
+
+  if (!dogInferenceActive || !dogModelLoaded || cam.readyState < 2) return;
+
+  dogFrameCount++;
+  if (dogFrameCount % 3 !== 0) return;
+
+  const now = performance.now();
+  const map = getVideoMapping();
+  const lb  = getDogLetterbox();
+  const dogs = await runDogInference(cam);
+
+  ctx.clearRect(0, 0, W, H);
+
+  if (dogs.length === 0) {
+    ctx.save();
+    ctx.font = '14px Space Mono, monospace';
+    ctx.fillStyle = 'rgba(255,255,255,0.5)';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('POINT CAMERA AT DOG', W / 2, H / 2);
+    ctx.restore();
+    return;
+  }
+
+  const detToTIdx = matchDogs(dogs, lb, map, now);
+
+  for (let dIdx = 0; dIdx < dogs.length; dIdx++) {
+    const tIdx = detToTIdx[dIdx];
+    if (tIdx < 0) continue;
+
+    const dog = trackedDogs[tIdx];
+    const kp  = dogs[dIdx].keypoints;
+
+    const battery = computeDogBattery(kp, dog.state.prev, dog.state);
+    dog.state.prev = kp;
+
+    const lvl = levelFor(battery);
+    drawDogSkeleton(kp, lb, map, lvl.color, lvl.glow);
+
+    // Position battery above nose (kp 16), fall back to centroid
+    let bx = dog.centroid.x, by = dog.centroid.y - 60;
+    const nose = kp[16];
+    if (nose && nose.conf >= DOG_KP_CONF) {
+      const np = dogModelToCanvas(nose.x, nose.y, lb, map);
+      bx = np.x;
+      by = np.y - 20;
+    }
+    drawDogBatteryIndicator(bx, by, battery, dog.id);
+  }
+}
+
 </script>
 
 <script>
