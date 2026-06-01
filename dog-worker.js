@@ -81,12 +81,13 @@ function iouRect(a, b) {
 
 async function init() {
   try {
-    [detectSession, poseSession] = await Promise.all([
-      ort.InferenceSession.create(MODEL_DETECT, { executionProviders: ['webgpu', 'webgl', 'wasm'] }),
-      ort.InferenceSession.create(MODEL_POSE,   { executionProviders: ['webgpu', 'webgl', 'wasm'] }),
-    ]);
+    detectSession = await ort.InferenceSession.create(MODEL_DETECT, { executionProviders: ['webgpu', 'webgl', 'wasm'] });
+    console.log('[dog-worker] detect session ready');
+    poseSession   = await ort.InferenceSession.create(MODEL_POSE,   { executionProviders: ['webgpu', 'webgl', 'wasm'] });
+    console.log('[dog-worker] pose session ready');
     postMessage({ type: 'ready' });
   } catch (e) {
+    console.error('[dog-worker] session create failed:', e);
     postMessage({ type: 'error', message: e.message });
   }
 }
