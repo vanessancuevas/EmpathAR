@@ -2263,7 +2263,7 @@ function matchDogs(detections, lb, map, now) {
     trackedDogs.push({
       id:        nextDogId++,
       centroid:  c,
-      state:     { battery: 0.65, prev: null },
+      state:     { battery: 0.65, prev: null, kpSmooth: null },
       lastSeen:  now,
     });
     detToTIdx[dIdx] = trackedDogs.length - 1;
@@ -2575,15 +2575,27 @@ function dogRenderLoop() {
     const dog = trackedDogs[tIdx];
     const kp  = dogs[dIdx].keypoints;
 
+    // EMA smooth keypoints toward latest worker result (alpha=0.35 ≈ 92% by next inference frame)
+    if (!dog.state.kpSmooth) {
+      dog.state.kpSmooth = kp.map(p => ({ ...p }));
+    } else {
+      for (let i = 0; i < kp.length; i++) {
+        dog.state.kpSmooth[i].x   += 0.35 * (kp[i].x   - dog.state.kpSmooth[i].x);
+        dog.state.kpSmooth[i].y   += 0.35 * (kp[i].y   - dog.state.kpSmooth[i].y);
+        dog.state.kpSmooth[i].conf = kp[i].conf;
+      }
+    }
+    const skp = dog.state.kpSmooth;
+
     const battery = computeDogBattery(kp, dog.state.prev, dog.state);
     dog.state.prev = kp;
 
     const lvl = levelFor(battery);
-    drawDogSkeleton(kp, lb, map, lvl.color, lvl.glow);
+    drawDogSkeleton(skp, lb, map, lvl.color, lvl.glow);
 
     // Position battery above nose (kp 16), fall back to centroid
     let bx = dog.centroid.x, by = dog.centroid.y - 60;
-    const nose = kp[16];
+    const nose = skp[16];
     if (nose && nose.conf >= DOG_KP_CONF) {
       const np = dogModelToCanvas(nose.x, nose.y, lb, map);
       bx = np.x;
