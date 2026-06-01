@@ -9,7 +9,9 @@
 //                    { type: 'result', dogs: Detection[], lb: Letterbox }
 //                    { type: 'error', message: string }
 
-const ORT_CDN      = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.18.0/dist/ort.min.js';
+importScripts('https://cdn.jsdelivr.net/npm/onnxruntime-web@1.18.0/dist/ort.min.js');
+ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.18.0/dist/';
+
 const MODEL_DETECT = '/models/dog-detect-int8.onnx';
 const MODEL_POSE   = '/models/dog-pose-int8-320.onnx';
 const INPUT_SIZE   = 320;
@@ -78,8 +80,6 @@ function iouRect(a, b) {
 // ── init ─────────────────────────────────────────────────────────────────────
 
 async function init() {
-  importScripts(ORT_CDN);
-  ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.18.0/dist/';
   try {
     [detectSession, poseSession] = await Promise.all([
       ort.InferenceSession.create(MODEL_DETECT, { executionProviders: ['webgpu', 'webgl', 'wasm'] }),
@@ -215,6 +215,8 @@ async function infer(bitmap, vw, vh) {
 }
 
 // ── message handler ───────────────────────────────────────────────────────────
+
+self.onerror = (e) => postMessage({ type: 'error', message: `Worker uncaught: ${e.message}` });
 
 self.onmessage = async ({ data }) => {
   if (data.type === 'init')  await init();
