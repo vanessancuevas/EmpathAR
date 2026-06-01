@@ -181,6 +181,79 @@
     }
     .phase-items li.done { color: #c8faf5; text-decoration: line-through; }
 
+    /* ── Feature launch card ── */
+    .launch-card {
+      border: 1px solid var(--accent);
+      background: rgba(0,212,184,0.05);
+      padding: 28px 28px 24px;
+      position: relative;
+      margin-bottom: 48px;
+    }
+    .launch-card::before, .launch-card::after,
+    .launch-card > .br::before, .launch-card > .br::after {
+      content: ''; position: absolute;
+      width: 14px; height: 14px;
+      border-color: var(--accent);
+      border-style: solid;
+    }
+    .launch-card::before  { top: -1px;    left: -1px;  border-width: 2px 0 0 2px; }
+    .launch-card::after   { top: -1px;    right: -1px; border-width: 2px 2px 0 0; }
+    .launch-card > .br::before { bottom: -1px; left: -1px;  border-width: 0 0 2px 2px; }
+    .launch-card > .br::after  { bottom: -1px; right: -1px; border-width: 0 2px 2px 0; }
+    .launch-eyebrow {
+      font-family: var(--font-m);
+      font-size: 0.48rem;
+      letter-spacing: 0.26em;
+      color: var(--accent);
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+    .launch-title {
+      font-family: var(--font-d);
+      font-size: clamp(1.1rem, 3.5vw, 1.6rem);
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 14px;
+      line-height: 1.2;
+    }
+    .launch-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-top: 20px;
+    }
+    @media (max-width: 560px) { .launch-grid { grid-template-columns: 1fr; } }
+    .launch-block-label {
+      font-family: var(--font-m);
+      font-size: 0.44rem;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 6px;
+    }
+    .launch-block p {
+      font-size: 0.68rem;
+      line-height: 1.7;
+      color: var(--text);
+      margin-bottom: 0;
+    }
+    .launch-block ul {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .launch-block ul li {
+      font-size: 0.68rem;
+      line-height: 1.6;
+      color: var(--text);
+      padding-left: 14px;
+      position: relative;
+    }
+    .launch-block ul li::before { content: '—'; position: absolute; left: 0; color: #c8faf5; }
+    .launch-block ul li.warn { color: rgba(184,237,232,0.55); }
+    .launch-block ul li.warn::before { color: rgba(184,237,232,0.35); }
+
     .cta-row { text-align: center; margin-top: 48px; }
     .cta-btn {
       display: inline-block;
@@ -205,6 +278,44 @@
   </div>
 
   <div class="roadmap-body">
+
+    <div class="launch-card"><div class="br"></div>
+      <div class="launch-eyebrow">Just Shipped // Jun 2026 // Dog Mode v1.0</div>
+      <div class="launch-title">Animal Mode is Live.</div>
+      <p>EmpathAR can now read your dog's social battery in real time — pointing the camera at a dog overlays a pose skeleton and energy state, the same way it does for people. It's the first version. It works. Here's the honest breakdown.</p>
+
+      <div class="launch-grid">
+        <div class="launch-block">
+          <div class="launch-block-label">How it works</div>
+          <ul>
+            <li>A lightweight detector (YOLOv8n, 3.3 MB) scans the full frame to find where the dog is</li>
+            <li>A second pose model (3.6 MB) runs only on that cropped region — much cheaper than scanning the whole frame</li>
+            <li>Both models run in a Web Worker so the main thread stays smooth</li>
+            <li>Everything runs on-device — no frames leave your phone</li>
+          </ul>
+        </div>
+        <div class="launch-block">
+          <div class="launch-block-label">Current limitations</div>
+          <ul>
+            <li class="warn">Lying-down and top-down poses often miss — the training set is mostly standing dogs</li>
+            <li class="warn">Mobile inference is slower than human mode (WASM-only on iOS, no GPU yet)</li>
+            <li class="warn">Small or partially visible dogs may not be detected</li>
+          </ul>
+        </div>
+        <div class="launch-block">
+          <div class="launch-block-label">What we're fixing next</div>
+          <ul>
+            <li>Retrain on lying-down and overhead-view examples to fix the pose gap</li>
+            <li>TFLite runtime swap — same engine as human mode, 2–3× faster on mobile</li>
+            <li>Breed and coat colour accuracy improvements</li>
+          </ul>
+        </div>
+        <div class="launch-block">
+          <div class="launch-block-label">Why it matters</div>
+          <p>Dogs can't tell you when they're overwhelmed. Animal Mode is the first step toward cross-species empathy intelligence — reading the room whether the room has people, pets, or both.</p>
+        </div>
+      </div>
+    </div>
 
     <div class="section">
       <div class="section-label">What's Next // Product Roadmap</div>
@@ -274,7 +385,7 @@
 
         <div class="phase"><div class="br"></div>
           <div class="phase-header">
-            <span class="phase-tag next">Next</span>
+            <span class="phase-tag shipped">Shipped</span>
             <span class="phase-title">v1.4 — Animal Mode</span>
           </div>
           <ul class="phase-items">
