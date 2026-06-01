@@ -381,19 +381,10 @@
     }
 
     /* ── Mode toggle ── */
-    #top-right-controls {
-      position: absolute;
-      top: 14px; right: 14px;
-      display: flex;
-      flex-direction: column;
-      align-items: flex-end;
-      gap: 8px;
-      pointer-events: all;
-      z-index: 5;
-    }
     #mode-toggle {
-      position: static;
-      transform: none;
+      position: absolute;
+      top: 14px; left: 50%;
+      transform: translateX(-50%);
       display: flex;
       background: rgba(3,13,18,0.82);
       backdrop-filter: blur(8px);
@@ -520,11 +511,24 @@
       .legend-desc { font-size: 0.625rem; }
     }
 
-    /* ── Notification tab (inside top-right-controls) ── */
+    /* ── Notification tab ── */
     #notif-tab {
+      position: absolute;
+      top: 14px; right: 14px;
+      z-index: 5;
       display: flex;
       align-items: center;
       gap: 6px;
+    }
+    /* Mobile: toggle moves top-right, Tips stacks below it */
+    @media (max-width: 768px) {
+      #mode-toggle {
+        left: auto; right: 14px;
+        transform: none;
+      }
+      #notif-tab {
+        top: 54px;
+      }
     }
     #notif-badge {
       background: var(--accent);
@@ -707,14 +711,12 @@
 
 <div id="hud">
   <div id="loading-bar-wrap"><div id="loading-bar"></div></div>
-  <div id="top-right-controls">
-    <div id="mode-toggle">
-      <span id="mode-pill"></span>
-      <button class="mode-opt active" id="mode-human">Human</button>
-      <button class="mode-opt" id="mode-dog">Dog</button>
-    </div>
-    <button id="notif-tab" class="hud-btn">Tips <span id="notif-badge">0</span></button>
+  <div id="mode-toggle">
+    <span id="mode-pill"></span>
+    <button class="mode-opt active" id="mode-human">Human</button>
+    <button class="mode-opt" id="mode-dog">Dog</button>
   </div>
+  <button id="notif-tab" class="hud-btn">Tips <span id="notif-badge">0</span></button>
   <div id="status">Loading models…</div>
   <div id="legend" class="collapsed">
     <div class="legend-title">Social Battery</div>
