@@ -2351,7 +2351,7 @@ async function initAnimalModel() {
 
   try {
     dogSession = await ort.InferenceSession.create(DOG_MODEL_URL, {
-      executionProviders: ['webgl', 'wasm'],
+      executionProviders: ['webgpu', 'webgl', 'wasm'],
     });
     dogModelLoaded = true;
     statusEl.textContent = 'Dog Mode — Scanning';
