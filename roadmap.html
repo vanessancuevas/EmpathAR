@@ -279,16 +279,18 @@
   <div class="roadmap-body">
 
     <div class="launch-card"><div class="br"></div>
-      <div class="launch-eyebrow">Just Shipped // Jun 2026 // Dog Mode v1.0</div>
-      <div class="launch-title">Dog Mode is Live.</div>
-      <p>Point the camera at a dog and a pose skeleton appears — bones, joints, energy state — the same way it does for people. We built a two-stage inference pipeline that mirrors how Google's MediaPipe works under the hood: a cheap detector finds the dog first, then a custom-trained pose model runs only on that cropped region. We matched MediaPipe's core architecture — Web Worker isolation, detect-then-crop, compact quantized models (7 MB total).</p>
+      <div class="launch-eyebrow">Just Shipped // Jun 2026 // Animal Mode v1.2</div>
+      <div class="launch-title">Animal Mode is Live.</div>
+      <p>Point the camera at a dog and a pose skeleton appears — bones, joints, energy state — the same way it does for people. This is the first release of Animal Mode, starting with dogs. We designed a custom 24-keypoint quadruped skeleton from scratch, collected and labelled training data, and fine-tuned a YOLOv8 pose model to learn it. The result is a two-stage pipeline: a lightweight detector finds the dog first, then the pose model runs only on that cropped region — mirroring how MediaPipe works under the hood.</p>
+      <p>Future updates for other animals — cats and beyond — will live in Thornberri, a standalone app we're building (work in progress). EmpathAR stays focused on people; Thornberri takes the animal side further.</p>
 
       <div class="launch-grid">
         <div class="launch-block">
           <div class="launch-block-label">How it works</div>
           <ul>
-            <li>A lightweight COCO detector (3.3 MB) scans the full frame to locate the dog</li>
-            <li>A custom pose model (3.6 MB), fine-tuned on a 24-keypoint quadruped skeleton, runs only on the cropped region — not the full frame</li>
+            <li>A custom 24-keypoint quadruped skeleton, designed and labelled for dog anatomy</li>
+            <li>A YOLOv8 pose model fine-tuned on that skeleton — trained from scratch on dog-specific data</li>
+            <li>A lightweight COCO detector (3.3 MB) scans the full frame first; the pose model (3.6 MB) runs only on the cropped region</li>
             <li>Both models run in a Web Worker so the UI never blocks</li>
             <li>Everything runs on-device — no frames leave your phone</li>
           </ul>
@@ -346,8 +348,22 @@
 
         <div class="phase"><div class="br"></div>
           <div class="phase-header">
+            <span class="phase-tag shipped">Shipped</span>
+            <span class="phase-title">v1.2 — Animal Mode</span>
+          </div>
+          <ul class="phase-items">
+            <li class="done">Animal social battery detection for dogs</li>
+            <li class="done">Species-specific skeleton remapping for quadruped pose estimation</li>
+            <li class="done">Tail, ear, and posture signal interpretation</li>
+            <li class="done">Sentiment states calibrated for animal body language</li>
+            <li>Accuracy improvements across breeds and coat colours</li>
+          </ul>
+        </div>
+
+        <div class="phase"><div class="br"></div>
+          <div class="phase-header">
             <span class="phase-tag next">Next</span>
-            <span class="phase-title">v1.2 — Session Memory & Beyond</span>
+            <span class="phase-title">v1.3 — Session Memory & Beyond</span>
           </div>
           <ul class="phase-items">
             <li>Session summary: battery trends over time per person</li>
@@ -360,8 +376,8 @@
 
         <div class="phase"><div class="br"></div>
           <div class="phase-header">
-            <span class="phase-tag next">Next</span>
-            <span class="phase-title">v1.3 — Audio Intelligence</span>
+            <span class="phase-tag future">Future</span>
+            <span class="phase-title">v1.4 — Audio Intelligence</span>
           </div>
           <ul class="phase-items">
             <li>Audio detection: live mic input layered alongside body language signals</li>
@@ -372,15 +388,13 @@
 
         <div class="phase"><div class="br"></div>
           <div class="phase-header">
-            <span class="phase-tag shipped">Shipped</span>
-            <span class="phase-title">v1.4 — Animal Mode</span>
+            <span class="phase-tag future">Future</span>
+            <span class="phase-title">Thornberri — Multi-Species Animal Mode</span>
           </div>
           <ul class="phase-items">
-            <li>Animal social battery detection for dogs and cats</li>
-            <li>Species-specific skeleton remapping for quadruped pose estimation</li>
-            <li>Tail, ear, and posture signal interpretation per species</li>
-            <li>Sentiment states calibrated for animal body language</li>
-            <li>Accuracy improvements across breeds and coat colours</li>
+            <li>Cat support — feline body language signals and species-specific skeleton</li>
+            <li>Additional species beyond dogs</li>
+            <li>Future updates for other animals will likely live here as a standalone app — Thornberri is a work in progress</li>
           </ul>
         </div>
 
